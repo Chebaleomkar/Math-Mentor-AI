@@ -12,3 +12,5 @@ wheels/
 backend/.env
 
 AI Engineer Assignment - AI Planet.md
+
+backend/chroma_db
