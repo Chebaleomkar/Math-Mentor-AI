@@ -77,3 +77,4 @@ def retrieve_math_context(query: str, k: int = 3) -> str:
         context += f"\n--- From: {source_name} ---\n{doc}\n"
         
     return context
+    

@@ -1,153 +1,103 @@
-import re
-import json
+"""Solver Agent - Solves math problems using RAG + tools + Memory context."""
+
 from llm_router.router import router
 from tools.sympy_tool import solve_equation, derivative
 from tools.python_tool import execute_python
 from tools.rag_tool import retrieve_context
 
 from langgraph.prebuilt import create_react_agent
-from models.schemas import SolutionResult
-
-_SYSTEM = """You are an expert JEE-level Math Solver Agent. You are highly intelligent and capable of reasoning through complex math problems (Algebra, Calculus, Probability, Linear Algebra).
-        
-Your PRIMARY job is to solve the problem using your mathematical intelligence.
-        
-You have access to these OPTIONAL tools:
-- `retrieve_context`: Search the math knowledge base for formulas, concepts, or solution templates
-- `solve_equation`: Use SymPy to solve algebraic equations exactly
-- `derivative`: Use SymPy to calculate derivatives
-- `execute_python`: Use for numerical calculations or evaluating complex arithmetic
-
-INSTRUCTIONS:
-1. Read and understand the problem thoroughly
-2. Plan your solution approach
-3. Solve step-by-step, showing your reasoning
-4. Use tools when you need verification or get stuck
-5. Provide the final answer clearly
-6. Estimate your confidence in the solution (0-1)
-
-When solving:
-- Show ALL working steps
-- Verify your answer when possible
-- If using tools, explain why you're using them
-- State your final answer clearly at the end
-"""
 
 
 class SolverAgent:
-    """
-    Solver Agent - Solves math problems using RAG + tools.
-    
-    Responsibilities:
-    - Solve the problem using mathematical reasoning
-    - Use tools when needed (RAG, sympy, python)
-    - Provide step-by-step solution
-    - Return confidence score
-    """
-
     def __init__(self):
         self.llm = router.get_llm()
         
-        # Tools the Agent can use
+        # 1. Provide all tools the Agent has access to
         self.tools = [solve_equation, derivative, execute_python, retrieve_context]
-        
-        # System prompt defining the agent's behavior
-        self.prompt = _SYSTEM
 
-        # Create LangGraph ReAct agent
-        self.agent_executor = create_react_agent(
-            self.llm, 
-            tools=self.tools, 
-            prompt=self.prompt
-        )
+        # 2. Define the Agent's reasoning prompt
+        prompt = """You are an expert Math Solver Agent. You are highly intelligent and capable of reasoning through complex math problems (Algebra, Calculus, Probability, Linear Algebra).
+            
+            You should solve the problem primarily using your own reasoning and mathematical intelligence. However, you also have access to the following optional tools to ensure accuracy:
+            - `retrieve_context`: Use this to look up specific forgotten formulas or math concepts from the knowledge base.
+            - `solve_equation` & `derivative`: Use these to verify roots, factors, or complex algebraic derivatives.
+            - `execute_python`: Use this for raw numerical calculations or evaluating complex arithmetic.
+            
+            You don't have to use tools if you are confident in your own solution, but they are available to ensure accuracy. Always explain your step-by-step reasoning clearly."""
 
-    def run(self, parsed_problem):
+        # 3. Create the LangGraph Agent execution pipeline
+        self.agent_executor = create_react_agent(self.llm, tools=self.tools, prompt=prompt)
+
+    def run(self, parsed_problem, memory_context=None):
         """
-        Solve the parsed math problem.
+        Solve a math problem.
         
         Args:
-            parsed_problem: ParsedProblem from ParserAgent
+            parsed_problem: ParsedProblem object from Parser Agent
+            memory_context: Optional memory context from Memory Layer
             
         Returns:
-            SolutionResult: Complete solution with steps and confidence
+            SolutionResult with solution, steps, final_answer, confidence, tools_used
         """
         problem = parsed_problem.problem_text
         topic = parsed_problem.topic
-        constraints = parsed_problem.constraints
         
-        # Build context for the solver
-        context = f"""Problem: {problem}
-Topic: {topic}
-Constraints: {', '.join(constraints)}
-
-Solve this problem step by step. Show all your work and reasoning."""
-
-        # Invoke the agent - it will use tools as needed
+        # Build context string
+        context_parts = [f"Problem: {problem}", f"Topic: {topic}"]
+        
+        if parsed_problem.variables:
+            context_parts.append(f"Variables: {', '.join(parsed_problem.variables)}")
+        
+        if parsed_problem.constraints:
+            context_parts.append(f"Constraints: {', '.join(parsed_problem.constraints)}")
+        
+        # Add memory context if available
+        if memory_context and memory_context.get("has_memory"):
+            context_parts.append("\n" + memory_context.get("context", ""))
+        
+        context = "\n".join(context_parts)
+        
+        # The LLM will now automatically invoke tools as many times as it needs to find the answer!
         response = self.agent_executor.invoke({"messages": [("user", context)]})
         
-        # Extract the final response
-        final_message = response["messages"][-1].content
+        solution_text = response["messages"][-1].content
         
-        # Try to parse into structured format, fallback to raw if needed
-        try:
-            solution_result = self._parse_solution(final_message)
-        except Exception:
-            solution_result = SolutionResult(
-                solution=final_message,
-                steps=self._extract_steps(final_message),
-                final_answer=self._extract_answer(final_message),
-                confidence=0.7,
-                tools_used=[]
-            )
+        # Parse solution into structured format
+        parsed_solution = self._parse_solution(solution_text)
         
-        return solution_result
+        return parsed_solution
     
-    def _parse_solution(self, response: str) -> SolutionResult:
-        """Parse the LLM response into structured SolutionResult."""
-        json_match = re.search(r'\{[^{}]*\}', response, re.DOTALL)
-        if json_match:
-            try:
-                data = json.loads(json_match.group())
-                return SolutionResult(
-                    solution=data.get('solution', response),
-                    steps=data.get('steps', []),
-                    final_answer=data.get('final_answer', ''),
-                    confidence=data.get('confidence', 0.7),
-                    tools_used=data.get('tools_used', [])
-                )
-            except:
-                pass
+    def _parse_solution(self, solution_text: str) -> dict:
+        """Parse the LLM response into a structured solution result."""
+        import re
         
-        return SolutionResult(
-            solution=response,
-            steps=self._extract_steps(response),
-            final_answer=self._extract_answer(response),
-            confidence=0.7,
-            tools_used=[]
-        )
-    
-    def _extract_steps(self, text: str) -> list:
-        """Extract step-by-step solution from response."""
-        lines = text.split('\n')
-        steps = []
-        for line in lines:
-            line = line.strip()
-            if line and (line[0].isdigit() or line.startswith('-') or line.startswith('•')):
-                steps.append(line)
-        return steps if steps else [text]
-    
-    def _extract_answer(self, text: str) -> str:
-        """Extract the final answer from solution text."""
-        patterns = [
-            r'(?:answer|result|final answer)[:\s]+(.+?)(?:\n|$)',
-            r'(?:∴|therefore|thus)[:\s]+(.+?)(?:\n|$)',
-            r'(?:=|==)\s*(.+?)(?:\n|$)',
+        result = {
+            "solution": solution_text,
+            "steps": [],
+            "final_answer": "",
+            "confidence": 0.8,
+            "tools_used": []
+        }
+        
+        # Try to extract final answer
+        answer_patterns = [
+            r'(?:answer|solution|result|therefore|thus|hence)\s*[:=]?\s*\(?([A-Za-z0-9\.\-\s=]+?)\)?',
+            r'x\s*=\s*([\d\.\-]+)',
+            r'y\s*=\s*([\d\.\-]+)',
+            r'\$\$([^^]+)\$\$',
+            r'final.*?[:=]\s*([^\n]+)',
         ]
         
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
+        for pattern in answer_patterns:
+            match = re.search(pattern, solution_text, re.IGNORECASE)
             if match:
-                return match.group(1).strip()
+                result["final_answer"] = match.group(1).strip()
+                break
         
-        lines = [l.strip() for l in text.split('\n') if l.strip()]
-        return lines[-1] if lines else ""
+        # Try to extract steps
+        step_pattern = r'(?:step\s*\d+|\d+\.|\-)\s*([^\n]+)'
+        steps = re.findall(step_pattern, solution_text, re.IGNORECASE)
+        if steps:
+            result["steps"] = steps[:5]  # Limit to 5 steps
+        
+        return result
