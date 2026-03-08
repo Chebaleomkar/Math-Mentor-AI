@@ -4,8 +4,23 @@ import os
 import hashlib
 import chromadb
 from chromadb.config import Settings
+from chromadb import Documents, EmbeddingFunction, Embeddings
 from typing import List, Dict, Any, Optional
 from .models import MemoryEntry
+from core.config import settings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+
+class GeminiEmbeddingFunction(EmbeddingFunction):
+    """Custom embedding function using Langchain's Google API for pure Chroma collections."""
+    def __init__(self):
+        self.encoder = GoogleGenerativeAIEmbeddings(
+            model="gemini-embedding-001",
+            google_api_key=settings.GEMINI_API_KEY
+        )
+        
+    def __call__(self, input: Documents) -> Embeddings:
+        return self.encoder.embed_documents(list(input))
 
 
 class MemoryStore:
@@ -20,10 +35,23 @@ class MemoryStore:
             settings=Settings(anonymized_telemetry=False)
         )
         
-        self.collection = self.client.get_or_create_collection(
-            name="math_memory",
-            metadata={"description": "Math Mentor memory embeddings"}
-        )
+        try:
+            self.collection = self.client.get_or_create_collection(
+                name="math_memory",
+                metadata={"description": "Math Mentor memory embeddings"},
+                embedding_function=GeminiEmbeddingFunction()
+            )
+        except ValueError as e:
+            if "Embedding function conflict" in str(e):
+                print("Embedding function conflict detected. Recreating collection 'math_memory'...")
+                self.client.delete_collection(name="math_memory")
+                self.collection = self.client.create_collection(
+                    name="math_memory",
+                    metadata={"description": "Math Mentor memory embeddings"},
+                    embedding_function=GeminiEmbeddingFunction()
+                )
+            else:
+                raise
     
     def _generate_id(self, entry: MemoryEntry) -> str:
         """Generate unique ID for a memory entry."""

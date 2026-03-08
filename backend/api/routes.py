@@ -108,15 +108,20 @@ def route_question(request: QuestionRequest):
     return routing
 
 
-@router.post("/solve")
-def solve(request: QuestionRequest):
-    """Solve a math problem using the agent pipeline."""
-    if request.use_full_pipeline:
-        result = coordinator.solve_problem(request.question)
+@router.post("/solve", response_model=SolveResponse)
+async def solve(req: SolveRequest):
+    if req.input_type == "text":
+        raw_input = req.content
+    elif req.input_type == "image":
+        from core.image_extractor import get_extractor
+        result = get_extractor().extract_from_base64(req.content)
+        raw_input = result.extracted_text
+    elif req.input_type == "audio":
+        raw_input = req.content
     else:
-        result = coordinator.solve_simple(request.question)
-    return result
+        raise HTTPException(status_code=400, detail="input_type must be: text | image | audio")
 
+    return orchestrator.run(raw_input, input_type=req.input_type)
 
 @router.post("/verify")
 def verify_solution(request: VerificationRequest):
@@ -219,11 +224,11 @@ async def extract_text_from_image(file: UploadFile = File(...)):
         needs_hitl: Whether human review is recommended
     """
     try:
-        # Validate file type
-        if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+        if file.content_type and not file.content_type.startswith("image/"):
+            print(f">>> [API] Rejected file: {file.content_type}")
             raise HTTPException(
                 status_code=400,
-                detail="Only JPG and PNG images are supported"
+                detail=f"Uploaded file appears to be {file.content_type}, but an image is required."
             )
         
         # Read image bytes
@@ -254,7 +259,10 @@ async def extract_text_from_image(file: UploadFile = File(...)):
                       if result["low_confidence"] 
                       else "Text extracted successfully"
         }
-        
+        if "error" in result:
+            print(f">>> [API OCR Error] {result['error']}")
+            response["message"] = f"Error during OCR: {result['error']}"
+            
         return response
         
     except HTTPException:
@@ -320,11 +328,10 @@ async def solve_from_image(
         solution: Full solution if successful
     """
     try:
-        # Validate file type
-        if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+        if file.content_type and not file.content_type.startswith("image/"):
             raise HTTPException(
                 status_code=400,
-                detail="Only JPG and PNG images are supported"
+                detail=f"Uploaded file appears to be {file.content_type}, but an image is required."
             )
         
         # Step 1: OCR (run in thread pool for async)

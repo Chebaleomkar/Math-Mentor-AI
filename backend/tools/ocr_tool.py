@@ -28,6 +28,11 @@ import os
 import uuid
 import base64
 import threading
+
+# Fix for python 3.13 and Paddle 3.3 ConvertPirAttribute2RuntimeAttribute error
+os.environ["FLAGS_use_mkldnn"] = "0"
+os.environ["FLAGS_enable_pir_api"] = "0"
+
 from typing import Union, List, Dict, Any, Optional
 
 import numpy as np
@@ -103,7 +108,6 @@ class OCRTool:
                     self._ocr = PaddleOCR(
                         use_angle_cls=self.use_angle_cls,
                         lang=self.lang,
-                        show_log=False,
                         det_db_thresh=0.3,
                         det_db_box_thresh=0.5,
                     )
@@ -145,7 +149,9 @@ class OCRTool:
         
         try:
             # Run OCR
-            result = self.ocr.ocr(img_array, cls=True)
+            print(f">>> [OCR TOOL] Starting extraction for image... Shape: {img_array.shape if img_array is not None else 'None'}")
+            result = self.ocr.ocr(img_array)
+            print(f">>> [OCR TOOL] Raw OCR Result: {result}")
             
             # Parse results
             if not result or not result[0]:
@@ -192,6 +198,7 @@ class OCRTool:
             }
             
         except Exception as e:
+            print(f">>> [OCR TOOL] Error during extraction: {e}")
             return {
                 "text": "",
                 "lines": [],
