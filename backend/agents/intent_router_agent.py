@@ -33,18 +33,25 @@ Constraints: {constraints}
 
     def run(self, parsed_problem):
 
-        prompt = self.prompt.format(
-            problem_text=parsed_problem.problem_text,
-            topic=parsed_problem.topic,
-            variables=", ".join(parsed_problem.variables),
-            constraints=", ".join(parsed_problem.constraints),
-        )
+        chain = self.prompt | self.llm
 
-        response = self.llm.invoke(prompt)
+        response = chain.invoke({
+            "problem_text": parsed_problem.problem_text,
+            "topic": parsed_problem.topic,
+            "variables": ", ".join(parsed_problem.variables or []),
+            "constraints": ", ".join(parsed_problem.constraints or [])
+        })
 
-        # simple JSON parsing
-        import json
-        workflow = json.loads(response.content)
+        import json, re
+
+        text = response.content.strip()
+        text = re.sub(r"^```(?:json)?", "", text).strip()
+        text = re.sub(r"```$", "", text).strip()
+
+        try:
+            workflow = json.loads(text)
+        except json.JSONDecodeError:
+            workflow = {}
 
         return workflow
 

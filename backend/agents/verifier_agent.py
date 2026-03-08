@@ -33,13 +33,14 @@ B. Identify any logical errors, wrong formulas, domain violations, or missed edg
 C. Assign a confidence score between 0.0 (completely wrong) and 1.0 (certainly correct).
 
 Respond ONLY with a valid JSON object — no markdown, no explanation:
-{
+{{
   "is_correct": <true | false>,
   "confidence": <float 0.0-1.0>,
   "issues": ["<issue1>", "..."],
   "corrected_answer": "<corrected final answer, or empty string if correct>",
   "reasoning": "<brief explanation of your check>"
-}"""
+}}
+"""
 
 _HUMAN = """Problem:
 {problem_text}

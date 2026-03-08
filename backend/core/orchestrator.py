@@ -49,7 +49,7 @@ class Orchestrator:
             parsed.problem_text += hint_block
 
         # 3. Retrieve RAG context for UI display (solver agent also calls internally)
-        raw_chunks = get_retrieved_chunks(parsed.problem_text, top_k=4)
+        raw_chunks = get_retrieved_chunks(parsed.problem_text)
         retrieved_sources = [
             RetrievedSource(
                 title=c.title,
