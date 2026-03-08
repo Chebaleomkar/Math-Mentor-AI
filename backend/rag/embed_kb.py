@@ -34,7 +34,7 @@ from core.config import settings
 CHUNK_SIZE = 500          # characters per chunk
 CHUNK_OVERLAP = 250
 BATCH_SIZE = 20           # Gemini embedding API batch limit
-RATE_LIMIT_DELAY = 10     # 10 second delay between batches to respect rate limits
+RATE_LIMIT_DELAY = 20     # 10 second delay between batches to respect rate limits
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

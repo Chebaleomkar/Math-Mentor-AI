@@ -210,6 +210,30 @@ export default function Home() {
     }
   };
 
+  const handleHitlResponse = async (msgId: string, memoryId: string, approved: boolean, editedAnswer?: string) => {
+    try {
+      const res = await axios.post(`${API_URL}/hitl/${memoryId}`, {
+        approved: approved,
+        edited_answer: editedAnswer,
+        comment: "Human-in-the-loop review"
+      });
+
+      // Update the solution with the potentially edited answer
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === msgId) {
+          const newSolution = { ...msg.solution };
+          if (!approved && res.data.final_answer) {
+            newSolution.explanation.final_answer = res.data.final_answer;
+          }
+          return { ...msg, solution: newSolution, feedbackGiven: approved ? "correct" : "incorrect" };
+        }
+        return msg;
+      }));
+    } catch (error) {
+      console.error("Failed to send HITL response", error);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -328,7 +352,7 @@ export default function Home() {
                     )}
 
                     {/* OCR Review (HITL) */}
-                    {msg.role === "assistant" && !msg.isProcessing && msg.needsReview && (
+                    {msg.role === "assistant" && !msg.isProcessing && msg.needsReview && !msg.solution && (
                       <div className="space-y-4 w-full">
                         <div className="flex items-center gap-2 text-yellow-500 text-sm font-medium">
                           <AlertCircle className="w-4 h-4" /> Please review extracted text:
@@ -344,7 +368,7 @@ export default function Home() {
                             className="bg-orange-600 hover:bg-orange-700 text-white"
                             onClick={() => {
                               updateMessage(msg.id, { needsReview: false });
-                              handleSolveText(msg.content);
+                              handleSolveText(msg.content, msg.type);
                             }}
                           >
                             <CheckCircle2 className="w-4 h-4 mr-2" /> Looks Good, Solve It
@@ -446,6 +470,36 @@ export default function Home() {
                                 ? msg.solution.verifier_result.issues.join(". ")
                                 : "The mathematical steps appear sound."
                               }
+                            </div>
+                          </div>
+                        )}
+
+                        {/* HITL Notice & Actions */}
+                        {msg.solution.hitl_required && !msg.feedbackGiven && (
+                          <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg space-y-3">
+                            <div className="flex items-center gap-2 text-orange-400 font-bold text-[10px] uppercase tracking-widest">
+                              <User className="w-3.5 h-3.5" /> Human-In-The-Loop Required
+                            </div>
+                            <p className="text-xs text-orange-200/80">
+                              The verifier agent is uncertain about this solution. Please review and confirm.
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-green-500/50 text-green-400 hover:bg-green-500/10 text-[11px]"
+                                onClick={() => msg.memoryId && handleHitlResponse(msg.id, msg.memoryId, true)}
+                              >
+                                <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-red-500/50 text-red-400 hover:bg-red-500/10 text-[11px]"
+                                onClick={() => msg.memoryId && handleHitlResponse(msg.id, msg.memoryId, false)}
+                              >
+                                <ThumbsDown className="w-3.5 h-3.5 mr-1" /> Flag Incorrect
+                              </Button>
                             </div>
                           </div>
                         )}
@@ -578,6 +632,6 @@ export default function Home() {
           </p>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
