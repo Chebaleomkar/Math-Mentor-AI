@@ -1,4 +1,6 @@
 """
+routes/image_routes.py
+----------------------
 Image extraction endpoint.
 
 POST /extract/image

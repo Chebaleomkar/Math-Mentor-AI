@@ -1,16 +1,44 @@
-fastapi
-uvicorn
-python-dotenv
-pydantic
-groq
-langchain
-langchain-core
-langchain-community
-langchain-groq
-langchain-google-genai
-google-genai
-chromadb
-paddlepaddle
-paddleocr
-pillow
-numpy
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12          # required for UploadFile in FastAPI
+
+# ── LLM & LangChain ───────────────────────────────────────────────────────────
+langchain==0.3.7
+langchain-core==0.3.17
+langchain-groq==0.2.1
+langchain-google-genai==2.0.5
+langchain-community==0.3.7
+
+# ── Groq SDK (direct — for Whisper audio transcription API) ───────────────────
+groq==0.11.0
+
+# ── Google Generative AI (Gemini embeddings backend) ──────────────────────────
+google-generativeai==0.8.3
+
+# ── RAG / Vector Store ────────────────────────────────────────────────────────
+chromadb==0.5.20                  # Persistent local vector DB, no external service
+
+# ── Document parsing (knowledge base ingestion) ───────────────────────────────
+markdown==3.7
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# ── Symbolic math ─────────────────────────────────────────────────────────────
+sympy==1.13.3
+
+# ── Numeric / data ────────────────────────────────────────────────────────────
+numpy==1.26.4
+
+# ── Config & validation ───────────────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# ── Image handling ────────────────────────────────────────────────────────────
+Pillow==11.0.0                    # Image validation / resizing before Groq vision
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2                     # async test client for FastAPI TestClient

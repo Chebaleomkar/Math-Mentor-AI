@@ -1,56 +1,59 @@
-import os
-import sys
+"""
+rag/vector_store.py
+-------------------
+Thin wrapper around ChromaDB that provides a single persistent client
+and collection reference, shared across the whole application.
 
-# Add backend to path to allow importing core
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.dirname(current_dir)
-if backend_dir not in sys.path:
-    sys.path.append(backend_dir)
+Never instantiate chromadb.PersistentClient more than once —
+doing so on the same path causes lock conflicts.
+"""
+from pathlib import Path
+from typing import Optional
 
-from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import chromadb
+from chromadb.config import Settings as ChromaSettings
+
 from core.config import settings
 
-def build_vector_store():
-    # Use the existing knowledge_base directory inside rag folder
-    kb_dir = os.path.join(current_dir, "knowledge_base")
-    db_dir = os.path.join(current_dir, "db")
 
-    loader = DirectoryLoader(kb_dir, glob="**/*.md", loader_cls=TextLoader)
-    documents = loader.load()
+class VectorStore:
+    _client: Optional[chromadb.PersistentClient] = None
+    _collection: Optional[chromadb.Collection] = None
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=400,
-        chunk_overlap=50
-    )
+    @classmethod
+    def _init(cls):
+        if cls._client is not None:
+            return
 
-    chunks = splitter.split_documents(documents)
+        persist_dir = Path(settings.CHROMA_PERSIST_DIR)
+        persist_dir.mkdir(parents=True, exist_ok=True)
 
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-001",
-        google_api_key=settings.GEMINI_API_KEY
-    )
+        cls._client = chromadb.PersistentClient(
+            path=str(persist_dir),
+            settings=ChromaSettings(anonymized_telemetry=False),
+        )
 
-    vectordb = Chroma(
-        persist_directory=db_dir,
-        embedding_function=embeddings
-    )
+    @classmethod
+    def get_collection(cls) -> chromadb.Collection:
+        cls._init()
 
-    import time
-    batch_size = 10
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i:i+batch_size]
-        print(f"Adding chunks {i} to {i+len(batch)} of {len(chunks)}...")
-        vectordb.add_documents(batch)
-        time.sleep(6)  # Avoid Free Tier 15 RPM limits
+        if cls._collection is None:
+            # get_or_create so the server starts even if embed_kb hasn't been run
+            cls._collection = cls._client.get_or_create_collection(
+                name=settings.CHROMA_COLLECTION,
+                metadata={"hnsw:space": "cosine"},
+            )
+        return cls._collection
 
-    vectordb.persist()
+    @classmethod
+    def is_populated(cls) -> bool:
+        """Returns True if the collection has at least one document."""
+        try:
+            return cls.get_collection().count() > 0
+        except Exception:
+            return False
 
-    return vectordb
 
-if __name__ == "__main__":
-    print("Building vector store...")
-    build_vector_store()
-    print("Done!")
+# Module-level convenience
+def get_collection() -> chromadb.Collection:
+    return VectorStore.get_collection()

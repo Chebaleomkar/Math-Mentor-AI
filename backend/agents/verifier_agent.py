@@ -1,127 +1,91 @@
+"""
+Verifier / Critic Agent
+-----------------------
+Checks the solver's output for:
+  - Logical / mathematical correctness
+  - Unit and domain validity
+  - Edge-case coverage
+
+Returns a VerifierResult with a confidence score (0-1) and optional issues list.
+If confidence < threshold → sets needs_hitl = True so the orchestrator can
+pause and ask the human to review.
+"""
+import json
+import re
+
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
+
 from llm_router.router import router
-from models.schemas import VerificationResult, SolutionResult
+from models.schemas import ParsedProblem, SolverResult, VerifierResult
+
+HITL_THRESHOLD = 0.75   # confidence below this triggers human review
+
+_SYSTEM = """You are a rigorous Math Verifier Agent.
+
+You will be given:
+  1. The original problem
+  2. The solver's full solution
+  3. The claimed final answer
+
+Your tasks:
+A. Re-derive or check the answer independently using your own reasoning.
+B. Identify any logical errors, wrong formulas, domain violations, or missed edge cases.
+C. Assign a confidence score between 0.0 (completely wrong) and 1.0 (certainly correct).
+
+Respond ONLY with a valid JSON object — no markdown, no explanation:
+{
+  "is_correct": <true | false>,
+  "confidence": <float 0.0-1.0>,
+  "issues": ["<issue1>", "..."],
+  "corrected_answer": "<corrected final answer, or empty string if correct>",
+  "reasoning": "<brief explanation of your check>"
+}"""
+
+_HUMAN = """Problem:
+{problem_text}
+
+Topic: {topic}
+
+Solver Solution:
+{solution}
+
+Claimed Final Answer: {final_answer}"""
 
 
 class VerifierAgent:
-    """
-    Verifier/Critic Agent - Checks solution correctness.
-    
-    Responsibilities:
-    - Verify mathematical correctness
-    - Check units and domain constraints
-    - Identify edge cases
-    - Trigger HITL if not confident
-    - Provide suggestions for improvement
-    """
-
-    def __init__(self):
+    def __init__(self, hitl_threshold: float = HITL_THRESHOLD):
         self.llm = router.get_llm()
-        
-        self.prompt = ChatPromptTemplate.from_template(
-            """You are a Verifier/Critic Agent for a Math Mentor application.
-
-Your job is to CRITICALLY verify a math solution and identify any issues.
-
-VERIFICATION CHECKLIST:
-1. Mathematical correctness - Is the solution mathematically sound?
-2. Domain constraints - Are variables in valid ranges?
-3. Units consistency - Are units consistent throughout?
-4. Edge cases - Have edge cases been considered?
-5. Logical consistency - Does each step follow from the previous?
-
-Provide a critical analysis:
-{format_instructions}
-
-Problem:
-{problem}
-
-Topic: {topic}
-Variables: {variables}
-Constraints: {constraints}
-
-Solution to verify:
-{solution}
-
-Final Answer: {final_answer}
-"""
+        self.hitl_threshold = hitl_threshold
+        self.prompt = ChatPromptTemplate.from_messages(
+            [("system", _SYSTEM), ("human", _HUMAN)]
         )
-        
-        self.output_parser = PydanticOutputParser(pydantic_object=VerificationResult)
 
-    def run(self, parsed_problem, solution_result: SolutionResult) -> VerificationResult:
-        """
-        Verify a solution for correctness.
-        
-        Args:
-            parsed_problem: Original parsed problem
-            solution_result: Solution from SolverAgent
-            
-        Returns:
-            VerificationResult: Verification outcome with issues and suggestions
-        """
-        prompt = self.prompt.format(
-            problem=parsed_problem.problem_text,
-            topic=parsed_problem.topic,
-            variables=", ".join(parsed_problem.variables),
-            constraints=", ".join(parsed_problem.constraints),
-            solution=solution_result.solution,
-            final_answer=solution_result.final_answer,
-            format_instructions=self.output_parser.get_format_instructions()
-        )
-        
-        response = self.llm.invoke(prompt)
-        
-        try:
-            verification = self.output_parser.parse(response.content)
-        except Exception:
-            # Fallback if parsing fails
-            verification = VerificationResult(
-                is_correct=True,
-                confidence=0.7,
-                issues=[],
-                suggestions=[],
-                needs_human_review=False
-            )
-        
-        return verification
+    def run(
+        self,
+        parsed_problem: ParsedProblem,
+        solver_result: SolverResult,
+    ) -> VerifierResult:
+        chain = self.prompt | self.llm
+        response = chain.invoke({
+            "problem_text": parsed_problem.problem_text,
+            "topic": parsed_problem.topic,
+            "solution": solver_result.solution,
+            "final_answer": solver_result.final_answer,
+        })
 
-    def verify_with_confidence(self, parsed_problem, solution_result: SolutionResult) -> dict:
-        """
-        Verify with detailed confidence assessment.
-        
-        Returns:
-            dict: Contains verification result and metadata for HITL decisions
-        """
-        verification = self.run(parsed_problem, solution_result)
-        
-        # Determine if HITL is needed
-        needs_hitl = (
-            verification.needs_human_review or
-            verification.confidence < 0.7 or
-            len(verification.issues) > 2
+        text = response.content.strip()
+        text = re.sub(r"^```(?:json)?", "", text).strip()
+        text = re.sub(r"```$", "", text).strip()
+
+        data = json.loads(text)
+
+        needs_hitl = data.get("confidence", 1.0) < self.hitl_threshold
+
+        return VerifierResult(
+            is_correct=data.get("is_correct", False),
+            confidence=data.get("confidence", 0.0),
+            issues=data.get("issues", []),
+            corrected_answer=data.get("corrected_answer", ""),
+            reasoning=data.get("reasoning", ""),
+            needs_hitl=needs_hitl,
         )
-        
-        return {
-            "verification": verification,
-            "needs_hitl": needs_hitl,
-            "confidence": verification.confidence,
-            "critical_issues": [issue for issue in verification.issues if "error" in issue.lower() or "wrong" in issue.lower()]
-        }
-    
-    def quick_check(self, solution_result: SolutionResult) -> bool:
-        """
-        Quick sanity check on the solution.
-        
-        Returns:
-            bool: True if solution passes basic checks
-        """
-        # Basic checks
-        if not solution_result.final_answer:
-            return False
-            
-        if solution_result.confidence < 0.5:
-            return False
-            
-        return True

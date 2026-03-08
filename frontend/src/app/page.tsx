@@ -28,11 +28,13 @@ type ChatMessage = {
   content: string;
   type: "text" | "image" | "audio";
   isProcessing?: boolean;
-  needsReview?: boolean;
+  needsReview?: boolean; // For OCR/ASR human review
   ocrData?: any;
-  solution?: any;
+  solution?: any; // Will store SolveResponse
   error?: string;
   imageUrl?: string;
+  memoryId?: string;
+  feedbackGiven?: "correct" | "incorrect" | null;
 };
 
 export default function Home() {
@@ -69,11 +71,13 @@ export default function Home() {
     setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, ...updates } : msg));
   };
 
-  const handleSolveText = async (query: string) => {
+  const handleSolveText = async (query: string, inputType: "text" | "image" | "audio" = "text") => {
     if (!query.trim()) return;
 
-    setInputValue("");
-    addMessage({ role: "user", type: "text", content: query });
+    if (inputType === "text") {
+      setInputValue("");
+      addMessage({ role: "user", type: "text", content: query });
+    }
 
     const aiMsgId = addMessage({
       role: "assistant",
@@ -86,11 +90,15 @@ export default function Home() {
 
     try {
       const res = await axios.post(`${API_URL}/solve`, {
-        question: query,
-        use_full_pipeline: true
+        input_type: inputType,
+        content: query
       });
 
-      updateMessage(aiMsgId, { isProcessing: false, solution: res.data });
+      updateMessage(aiMsgId, {
+        isProcessing: false,
+        solution: res.data,
+        memoryId: res.data.memory_id
+      });
     } catch (error: any) {
       updateMessage(aiMsgId, {
         isProcessing: false,
@@ -106,12 +114,12 @@ export default function Home() {
     if (!file) return;
 
     const imageUrl = URL.createObjectURL(file);
-    addMessage({ role: "user", type: "image", content: "Uploaded an image for OCR:\n" + file.name, imageUrl });
+    addMessage({ role: "user", type: "image", content: "Uploaded an image for extraction:\n" + file.name, imageUrl });
 
     const aiMsgId = addMessage({
       role: "assistant",
       type: "text",
-      content: "Extracting text from image...",
+      content: "Extracting math from image...",
       isProcessing: true
     });
 
@@ -121,22 +129,22 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post(`${API_URL}/ocr/extract`, formData, {
+      const res = await axios.post(`${API_URL}/extract/image`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
-      const { text, low_confidence, message } = res.data;
+      const { extracted_text, needs_review, confidence } = res.data;
 
       updateMessage(aiMsgId, {
         isProcessing: false,
-        content: text,
-        needsReview: low_confidence,
+        content: extracted_text,
+        needsReview: needs_review || confidence === "low",
         ocrData: res.data
       });
 
       // If confident, automatically solve
-      if (!low_confidence) {
-        handleSolveText(text);
+      if (!needs_review && confidence !== "low") {
+        handleSolveText(extracted_text, "image");
       }
     } catch (error: any) {
       updateMessage(aiMsgId, {
@@ -168,14 +176,16 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post(`${API_URL}/asr/transcribe?language=en`, formData, {
+      const res = await axios.post(`${API_URL}/extract/audio?language=en`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
+      const { cleaned_text, needs_review } = res.data;
+
       updateMessage(aiMsgId, {
         isProcessing: false,
-        content: res.data.text,
-        needsReview: true // Always good to review audio transcription
+        content: cleaned_text,
+        needsReview: needs_review || true // Often good to review audio
       });
     } catch (error: any) {
       updateMessage(aiMsgId, {
@@ -185,6 +195,18 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
       if (audioInputRef.current) audioInputRef.current.value = "";
+    }
+  };
+
+  const handleFeedback = async (msgId: string, memoryId: string, feedback: "correct" | "incorrect") => {
+    try {
+      await axios.post(`${API_URL}/feedback/${memoryId}`, {
+        feedback: feedback,
+        comment: ""
+      });
+      updateMessage(msgId, { feedbackGiven: feedback });
+    } catch (error) {
+      console.error("Failed to send feedback", error);
     }
   };
 
@@ -334,39 +356,49 @@ export default function Home() {
                     {/* Solution Details */}
                     {msg.role === "assistant" && msg.solution && (
                       <div className="space-y-6 w-full text-sm">
-                        {/* Agent Trace */}
-                        {msg.solution.hits && (
-                          <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                            <span className="text-slate-500">Pipeline:</span>
-                            {msg.solution.hits.map((hit: string, i: number) => (
-                              <div key={i} className="flex items-center gap-1">
-                                {i > 0 && <span className="text-slate-600">→</span>}
-                                <span className="text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20">
-                                  {hit}
-                                </span>
-                              </div>
-                            ))}
+                        {/* Agent Trace (Tool Calls) */}
+                        {msg.solution.solver_result?.tool_calls?.length > 0 && (
+                          <div className="space-y-2">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Agent Execution Trace:</span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                              {msg.solution.solver_result.tool_calls.map((call: any, i: number) => (
+                                <div key={i} className="flex items-center gap-1">
+                                  {i > 0 && <span className="text-slate-600">→</span>}
+                                  <Tooltip>
+                                    <TooltipTrigger render={
+                                      <span className="text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded border border-orange-500/20 cursor-help">
+                                        {call.tool}
+                                      </span>
+                                    } />
+                                    <TooltipContent className="bg-black border-orange-500/30 text-white max-w-xs">
+                                      <div className="font-bold mb-1">Input: {call.input}</div>
+                                      <div className="opacity-70 truncate">Output: {call.output}</div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
 
-                        {/* Parsed Vars */}
-                        {msg.solution.parsed && (
+                        {/* Parsed Problem Details */}
+                        {msg.solution.parsed_problem && (
                           <div className="bg-orange-950/20 border border-orange-900/50 rounded p-3 font-mono text-xs space-y-1">
                             <div className="flex gap-2">
                               <span className="text-orange-500/70">Topic:</span>
-                              <span className="text-orange-200">{msg.solution.parsed.topic || 'General'}</span>
+                              <span className="text-orange-200 capitalize">{msg.solution.parsed_problem.topic || 'General'}</span>
                             </div>
-                            {msg.solution.parsed.variables?.length > 0 && (
+                            {msg.solution.parsed_problem.variables?.length > 0 && (
                               <div className="flex gap-2">
                                 <span className="text-orange-500/70">Variables:</span>
-                                <span className="text-orange-200">{msg.solution.parsed.variables.join(', ')}</span>
+                                <span className="text-orange-200">{msg.solution.parsed_problem.variables.join(', ')}</span>
                               </div>
                             )}
                           </div>
                         )}
 
                         {/* Explanation Content */}
-                        {msg.solution.explanation && (
+                        {msg.solution.explanation?.explanation && (
                           <div className="relative group/solution">
                             <div className="prose prose-invert prose-orange max-w-none text-slate-300 pr-8">
                               <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
@@ -384,18 +416,36 @@ export default function Home() {
                           </div>
                         )}
 
+                        {/* Retrieved Context Section */}
+                        {msg.solution.retrieved_sources?.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Retrieved Knowledge:</span>
+                            <div className="grid grid-cols-1 gap-2">
+                              {msg.solution.retrieved_sources.slice(0, 2).map((src: any, i: number) => (
+                                <div key={i} className="bg-slate-900/50 border border-slate-800 rounded p-2 text-[11px]">
+                                  <div className="font-bold text-orange-400/80 mb-1">{src.title} - {src.section}</div>
+                                  <div className="text-slate-400 italic line-clamp-2">"...{src.snippet}..."</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Verification Notice */}
-                        {msg.solution.verification && (
-                          <div className={`p-3 rounded border text-xs flex gap-3 items-start ${msg.solution.verification.is_correct
+                        {msg.solution.verifier_result && (
+                          <div className={`p-3 rounded border text-xs flex gap-3 items-start ${msg.solution.verifier_result.is_correct
                             ? "bg-green-950/30 border-green-900/50 text-green-400"
                             : "bg-red-950/30 border-red-900/50 text-red-400"
                             }`}>
-                            {msg.solution.verification.is_correct ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
-                            <div>
+                            {msg.solution.verifier_result.is_correct ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                            <div className="flex-1">
                               <span className="font-bold opacity-80 uppercase tracking-wider block mb-1">
-                                Verifier Agent {msg.solution.verification.is_correct ? 'Approved' : 'Flagged'}
+                                Verifier Agent {msg.solution.verifier_result.is_correct ? 'Approved' : 'Flagged'} (Confidence: {(msg.solution.verifier_result.confidence * 100).toFixed(0)}%)
                               </span>
-                              {msg.solution.verification.issues || "The mathematical steps appear sound."}
+                              {msg.solution.verifier_result.issues?.length > 0
+                                ? msg.solution.verifier_result.issues.join(". ")
+                                : "The mathematical steps appear sound."
+                              }
                             </div>
                           </div>
                         )}
@@ -406,7 +456,13 @@ export default function Home() {
                           <div className="flex gap-2">
                             <Tooltip>
                               <TooltipTrigger render={
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-green-500/10 hover:text-green-400">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-8 w-8 ${msg.feedbackGiven === "correct" ? "bg-green-500/20 text-green-400" : "hover:bg-green-500/10 hover:text-green-400"}`}
+                                  onClick={() => msg.memoryId && handleFeedback(msg.id, msg.memoryId, "correct")}
+                                  disabled={!!msg.feedbackGiven}
+                                >
                                   <ThumbsUp className="w-4 h-4" />
                                 </Button>
                               } />
@@ -415,7 +471,13 @@ export default function Home() {
 
                             <Tooltip>
                               <TooltipTrigger render={
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-500/10 hover:text-red-400">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className={`h-8 w-8 ${msg.feedbackGiven === "incorrect" ? "bg-red-500/20 text-red-400" : "hover:bg-red-500/10 hover:text-red-400"}`}
+                                  onClick={() => msg.memoryId && handleFeedback(msg.id, msg.memoryId, "incorrect")}
+                                  disabled={!!msg.feedbackGiven}
+                                >
                                   <ThumbsDown className="w-4 h-4" />
                                 </Button>
                               } />
