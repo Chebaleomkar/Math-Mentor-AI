@@ -99,81 +99,68 @@ def _confidence_badge(score: float) -> str:
     else:           icon, label = "🔴", "Low"
     return f"{icon} **{label} confidence** ({pct}%)"
 
+LATEX_DELIMS = [
+    {"left": "$$",  "right": "$$",  "display": True},
+    {"left": "$",   "right": "$",   "display": False},
+    {"left": "\\[", "right": "\\]", "display": True},
+    {"left": "\\(", "right": "\\)", "display": False},
+]
+
 def _fmt_tools(tool_calls: list) -> str:
     if not tool_calls:
-        return "<div style='color:var(--text-3);font-size:.8rem;'>No external tools invoked.</div>"
-    lines = ["<div style='display:flex;flex-direction:column;gap:8px;'>"]
-    for tc in tool_calls:
+        return "*No external tools called.*"
+    lines = ["\n**🛠️ Tool Executions**\n"]
+    for i, tc in enumerate(tool_calls, 1):
         tool = tc.get("tool", "unknown")
-        inp = str(tc.get("input", ""))[:60]
-        out = str(tc.get("output", ""))[:120]
-        lines.append(
-            f"<div style='background:var(--elevated);border-left:2px solid var(--accent);padding:8px;border-radius:var(--r-sm);'>"
-            f"<div style='font-family:var(--mono);font-size:.75rem;color:var(--accent);font-weight:600;'>{tool}</div>"
-            f"<div style='font-size:.7rem;color:var(--text-2);margin-top:4px;'>&larr; {inp}...</div>"
-            f"<div style='font-size:.7rem;color:var(--green);margin-top:2px;'>&rarr; {out}...</div>"
-            f"</div>"
-        )
-    lines.append("</div>")
+        inp = str(tc.get("input", ""))[:50].replace("\n", " ")
+        lines.append(f"{i}. **{tool}** › `{inp}...`")
     return "\n".join(lines)
 
-def _fmt_orchestration(hitl: bool, conf: float) -> str:
-    steps = [
-        ("Parser", "Structured interpretation", "✅"),
-        ("RAG",    "Math DB Context", "✅"),
-        ("Solver", "Multi-Agent reasoning", "✅"),
-        ("Verifier", "Confidence check", "🔔" if hitl else "✅"),
-        ("Explainer", "Professional LaTeX", "✅")
+def _fmt_orchestration(hitl: bool) -> str:
+    path = [
+        ("Parser", "✅"),
+        ("RAG",    "✅"),
+        ("Solver", "✅"),
+        ("Verifier", "🔔" if hitl else "✅"),
+        ("Explainer", "✅")
     ]
-    html = ["<div style='display:flex;flex-direction:column;gap:12px;margin:5px 0;'>"]
-    for i, (name, desc, status) in enumerate(steps):
-        is_last = i == len(steps) - 1
-        active_color = "var(--accent)" if status == "✅" else "var(--red)"
-        html.append(f"""
-            <div style='display:flex;align-items:center;gap:12px;position:relative;'>
-                <div style='width:24px;height:24px;border-radius:50%;background:var(--bg);border:2px solid {active_color};display:flex;align-items:center;justify-content:center;font-size:.7rem;color:{active_color};z-index:2;box-shadow:0 0 8px var(--accent-glow);'>
-                    {status}
-                </div>
-                <div style='flex:1;'>
-                    <div style='font-weight:600;font-size:.8rem;color:var(--text);letter-spacing:.02em;'>{name}</div>
-                    <div style='font-size:.68rem;color:var(--text-3);'>{desc}</div>
-                </div>
-                { "" if is_last else f"<div style='position:absolute;left:11px;top:24px;width:2px;bottom:-12px;background:linear-gradient(to bottom, {active_color}, var(--border));z-index:1;'></div>" }
-            </div>
-        """)
-    html.append("</div>")
-    return "".join(html)
+    flow = " → ".join([f"**{name}** {icon}" for name, icon in path])
+    return f"**🚉 Orchestration Flow**\n\n{flow}\n\n"
 
 def _fmt_sources(sources: list) -> str:
     if not sources:
-        return "<div style='color:var(--text-3);padding:10px;text-align:center;'>No relevant knowledge base chunks found.</div>"
-    html = ["<div style='display:flex;flex-direction:column;gap:10px;'>"]
+        return "*No relevant context retrieved.*"
+    lines = ["**📚 Reference Material**"]
     for s in sources:
-        html.append(f"""
-            <div style='background:var(--elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;'>
-                    <b style='font-size:.75rem;color:var(--text);'>{s.get('title','')}</b>
-                    <span style='background:var(--accent-dim);color:var(--accent);font-size:.6rem;padding:2px 6px;border-radius:4px;'>{s.get('score',0):.3f}</span>
-                </div>
-                <div style='font-size:.68rem;color:var(--text-2);line-height:1.4;'>{s.get('snippet','')[:180]}...</div>
-            </div>
-        """)
-    html.append("</div>")
-    return "".join(html)
+        title = s.get('title','Doc')
+        lines.append(f"- **{title}** (Score: `{s.get('score',0):.2f}`)\n  > {s.get('snippet','')[:150]}...")
+    return "\n".join(lines)
 
 def _fmt_recent(records: list | dict) -> str:
     if isinstance(records, dict) and "error" in records:
-        return f"*Error: {records['error']}*"
+        return f"<div style='color:var(--red);font-size:.75rem;'>{records['error']}</div>"
     if not records:
-        return "*No solved problems yet.*"
-    lines = []
+        return "<div style='color:var(--text-3);padding:20px;text-align:center;font-size:.7rem;'>No history.</div>"
+    
+    html_entries = []
     for r in records[:10]:
-        fb = r.get("user_feedback") or "—"
-        icon = "✅" if fb == "correct" else ("❌" if fb == "incorrect" else "·")
-        prob = r.get("problem_text", "")[:55]
-        ans  = r.get("final_answer", "?")[:40]
-        lines.append(f"{icon} **{r.get('topic','?')}**  \n`{prob}…`  \nAnswer: `{ans}`")
-    return "\n\n---\n\n".join(lines)
+        prob = r.get("problem_text", "")[:50].replace("\n", " ")
+        ans  = r.get("final_answer", "Error")
+        topic = r.get('topic','General')
+        
+        html_entries.append(f"""
+            <div style='margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.03); opacity:0.9;'>
+                <div style='display:flex; align-items:center; gap:4px; color:var(--accent); font-size:0.6rem; font-weight:600; text-transform:uppercase; margin-bottom:2px;'>
+                    👤 {topic}
+                </div>
+                <div style='font-size:0.75rem; color:var(--text-2); line-height:1.3; margin-bottom:4px;'>{prob}...</div>
+                <div style='background:rgba(255,255,255,0.01); border-radius:4px; padding:4px 6px;'>
+                    <div style='font-size:0.55rem; color:var(--text-3); text-transform:uppercase; font-weight:700; margin-bottom:1px;'>Ans</div>
+                    <div style='font-size:0.8rem; color:var(--green); font-weight:600;'>{ans}</div>
+                </div>
+            </div>
+        """)
+    return "".join(html_entries)
 
 # ── RETURN TUPLE CONTRACT ─────────────────────────────────────────────────────
 # Every handler that wires to send_outputs MUST return exactly this tuple:
@@ -208,21 +195,23 @@ def _run_solve(question: str, history: list) -> tuple:
     solver  = resp.get("solver_result", {})
     sources = resp.get("retrieved_sources", [])
     mem_id  = resp.get("memory_id", "")
+    hitl    = resp.get("hitl_required", False)
 
     final_answer   = expl.get("final_answer") or solver.get("final_answer", "")
     confidence     = float(expl.get("confidence") or verif.get("confidence") or 0)
     explanation_md = expl.get("explanation", "")
     issues         = verif.get("issues", [])
-    hitl           = resp.get("hitl_required", False)
+    issues_md      = "\n\n⚠️ **Issues:** " + ", ".join(issues) if issues else ""
 
-    issues_md = ("\n\n⚠️ **Verifier notes:** " + "; ".join(issues)) if issues else ""
-    hitl_md   = "\n\n🔔 **Human review requested** — use the panel below." if hitl else ""
+    # Only show HITL if confidence is NOT high (below 85%), even if requested
+    show_hitl = hitl and confidence < 0.85
+    hitl_md   = "\n\n🔔 **Human review requested** — use the panel below." if show_hitl else ""
 
     bot_msg = (
         f"### Solution\n\n"
         f"{explanation_md}\n\n"
         f"---\n\n"
-        f"**Final Answer:** `{final_answer}`\n\n"
+        f"**Final Answer:** {final_answer}\n\n"
         f"{_confidence_badge(confidence)}"
         f"{issues_md}"
         f"{hitl_md}"
@@ -233,11 +222,11 @@ def _run_solve(question: str, history: list) -> tuple:
     return (
         history,
         "",                          # clear text input
-        _fmt_orchestration(hitl, confidence) + "\n\n" + _fmt_tools(solver.get("tool_calls", [])),
+        f"{_fmt_orchestration(show_hitl)}\n\n---\n\n{_fmt_tools(solver.get('tool_calls', []))}",
         _fmt_sources(sources),
         mem_id,
-        gr.update(visible=True),     # show feedback
-        gr.update(visible=hitl),     # show hitl conditionally
+        gr.update(visible=not show_hitl), # hide feedback if hitl is on
+        gr.update(visible=show_hitl),     # show hitl conditionally
     )
 
 # ── Input handlers ────────────────────────────────────────────────────────────
@@ -335,7 +324,7 @@ def on_hitl(memory_id: str, edited_answer: str, approve: bool) -> tuple:
     if "error" in resp:
         return f"❌ {resp['error']}", gr.update(visible=False)
     final = resp.get("final_answer", "")
-    msg = f"{'Approved ✅' if approve else 'Corrected ✏️'} — Final answer: `{final}`"
+    msg = f"{'Approved ✅' if approve else 'Corrected ✏️'} — Final answer: {final}"
     return msg, gr.update(visible=False)
 
 
@@ -353,13 +342,13 @@ CSS = """
     --surface:     #15151A;
     --elevated:    #1D1D23;
     --border:      #2C2C35;
-    --border-hi:   #F5A623;
+    --border-hi:   #4F46E5;
     --text:        #EDEAE4;
     --text-2:      #9B9693;
     --text-3:      #55524F;
-    --accent:      #F5A623;
-    --accent-dim:  #6B4A12;
-    --accent-glow: rgba(245,166,35,0.12);
+    --accent:      #6366F1;
+    --accent-dim:  #1E1E3F;
+    --accent-glow: rgba(99,102,241,0.12);
     --green:       #4DC882;
     --red:         #E05C5C;
     --r-sm:        6px;
@@ -402,16 +391,53 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
 #hsub   { font-size:.7rem !important; color:var(--text-3) !important; margin-top:2px; }
 
 /* ── Layout ── */
-.main-row { padding: 0 !important; gap: 0 !important; }
-.chat-col  { padding: 12px 12px 0 12px !important; display:flex; flex-direction:column; }
-.info-col  { padding: 12px 12px 12px 0 !important; display:flex; flex-direction:column; gap:10px; overflow-y:auto; max-height:calc(100vh - 73px); }
+.main-row { 
+    padding: 0 !important; 
+    gap: 0 !important; 
+    height: calc(100vh - 75px) !important; 
+    min-height: 500px !important;
+    overflow: hidden !important; 
+}
+.chat-col {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+}
+.chat-inner-wrap {
+    padding: 12px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    gap: 0 !important;
+    max-width: 1000px !important;
+    margin: 0 auto !important;
+}
+.input-area-wrap {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+}
+.info-col { 
+    padding: 12px 12px 12px 0 !important; 
+    display:flex; 
+    flex-direction:column; 
+    gap:10px; 
+    overflow-y:auto; 
+    height: 100% !important;
+}
 
 /* ── Chatbot ── */
 #chatbot {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--r-lg) !important;
-    flex: 1;
+    background: transparent !important;
+    border: none !important;
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    margin-bottom: 4px !important;
 }
 #chatbot .wrap.svelte-byatnx { padding: 12px !important; }
 /* user bubble */
@@ -419,21 +445,26 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
 #chatbot .message.user .md {
     background: var(--accent-dim) !important;
     border: 1px solid var(--accent) !important;
-    border-radius: var(--r-md) var(--r-md) var(--r-sm) var(--r-md) !important;
-    max-width: 82% !important;
+    border-radius: var(--r-md) var(--r-md) 0 var(--r-md) !important;
+    max-width: 85% !important;
     padding: 10px 14px !important;
     font-size: .88rem !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
 /* bot bubble */
+#chatbot .message.bot .bubble-wrap { justify-content: flex-start !important; }
 #chatbot .message.bot .md {
-    background: var(--elevated) !important;
+    background: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    border-radius: var(--r-md) var(--r-md) var(--r-md) var(--r-sm) !important;
-    max-width: 92% !important;
+    border-radius: var(--r-md) var(--r-md) var(--r-md) 0 !important;
+    max-width: 90% !important;
     padding: 13px 16px !important;
     font-size: .87rem !important;
-    line-height: 1.65 !important;
+    line-height: 1.6 !important;
 }
+/* tighter spacing */
+#chatbot .message { margin-bottom: 16px !important; }
+
 #chatbot .message.bot code {
     font-family: var(--mono) !important;
     background: var(--bg) !important;
@@ -468,7 +499,7 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
     border: 1px solid var(--border);
     border-radius: var(--r-md);
     padding: 12px;
-    margin-top: 8px;
+    margin-bottom: 8px;
 }
 .attach-panel .tabs { background: transparent !important; }
 .attach-panel .tab-nav button {
@@ -501,8 +532,9 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
     border: 1px solid var(--border) !important;
     border-radius: var(--r-lg) !important;
     padding: 8px 10px !important;
-    margin: 8px 0 !important;
+    margin-bottom: 12px !important;
     transition: border-color .2s, box-shadow .2s !important;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
 }
 .input-bar:focus-within {
     border-color: var(--accent) !important;
@@ -555,89 +587,135 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
     font-weight: 700 !important;
     transition: all .15s !important;
 }
-.send-btn button:hover { background: #FFB84A !important; transform: scale(1.07) !important; }
+.send-btn button:hover { background: #818CF8 !important; transform: scale(1.07) !important; }
 
 /* ── Feedback strip ── */
-.fb-strip { display:flex; align-items:center; gap:8px; padding: 4px 2px; }
+/* ── Feedback & HITL ── */
+.fb-outer { margin: 0 !important; padding: 0 !important; }
+.fb-strip { display:flex; align-items:center; gap:8px; padding: 0 !important; margin: 4px 0 !important; }
 .fb-btn button {
     background: var(--elevated) !important;
     border: 1px solid var(--border) !important;
     border-radius: 20px !important;
     color: var(--text-2) !important;
     font-size: .8rem !important;
-    padding: 4px 14px !important;
+    padding: 3px 12px !important;
     min-width: unset !important;
     transition: all .15s !important;
+    height: 28px !important;
 }
 .fb-btn button:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 
-/* ── Side cards ── */
-.side-card {
-    background: rgba(21, 21, 26, 0.7) !important;
+#hitl-outer { margin: 8px 0 !important; padding: 0 !important; }
+.hitl-wrap { 
+    padding: 16px !important; 
+    background: var(--elevated) !important; 
+    border: 1.5px solid var(--accent) !important; 
+    border-radius: var(--r-md) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 12px var(--accent-glow) !important;
+}
+.hitl-wrap .prose { margin-bottom: 12px !important; font-size: 0.85rem !important; line-height: 1.6 !important; }
+
+/* ── Live Preview ── */
+.preview-wrap {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px dashed var(--border) !important;
+    border-radius: var(--r-sm) !important;
+    padding: 8px 12px !important;
+    margin-bottom: 8px !important;
+    font-size: 0.85rem !important;
+}
+.preview-wrap b { color: var(--accent); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+
+/* ── Side cards & Inspector ── */
+.info-col {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 100px);
+    position: sticky;
+    top: 80px;
+}
+
+.inspector-card {
+    background: rgba(21, 21, 26, 0.75) !important;
     border: 1px solid var(--border) !important;
     border-radius: var(--r-md) !important;
     overflow: hidden !important;
-    backdrop-filter: blur(8px) !important;
-    transition: transform 0.2s ease, border-color 0.2s ease !important;
-    margin-bottom: 8px !important;
+    backdrop-filter: blur(12px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
 }
-.side-card:hover { border-color: var(--accent-dim) !important; }
 
-.side-card > .label-wrap,
-.side-card > div > .label-wrap {
-    background: rgba(29, 29, 35, 0.8) !important;
-    padding: 10px 14px !important;
-    border-bottom: 1px solid var(--border) !important;
-}
-.side-card > .label-wrap span,
-.side-card > div > .label-wrap span {
-    font-family: var(--mono) !important;
-    font-size: .7rem !important;
-    font-weight: 600 !important;
-    color: var(--accent) !important;
-    letter-spacing: .1em !important;
-    text-transform: uppercase !important;
-}
-.side-card .prose, .side-card .md {
+.side-tabs {
     background: transparent !important;
-    padding: 14px 16px !important;
-    font-size: .82rem !important;
-    line-height: 1.6 !important;
-    color: var(--text-2) !important;
+    border: none !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-/* Trace Step Highlight */
-.trace-step {
-    transition: all 0.3s ease !important;
+.side-tabs .tab-nav {
+    background: rgba(29, 29, 35, 0.9) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
 }
-.trace-step:hover {
-    background: var(--elevated) !important;
-    transform: translateX(4px) !important;
+
+.side-tabs .tab-nav button {
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-3) !important;
+    font-family: var(--mono) !important;
+    font-size: .65rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .08em !important;
+    padding: 8px 12px !important;
+    border-radius: var(--r-sm) !important;
+    transition: all 0.2s ease !important;
 }
+
+.side-tabs .tab-nav button.selected {
+    color: var(--accent) !important;
+    background: var(--accent-dim) !important;
+}
+
+.side-tabs .tabitem {
+    padding: 0 !important;
+    overflow-y: auto !important;
+    flex: 1 !important;
+}
+
+.tab-content-inner {
+    padding: 16px !important;
+}
+
+/* Custom scrollbar for inspector */
+.side-tabs .tabitem::-webkit-scrollbar { width: 3px; }
+.side-tabs .tabitem::-webkit-scrollbar-track { background: transparent; }
+.side-tabs .tabitem::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
 /* History Refresh Button */
-#refresh-btn button {
-    background: var(--bg) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text-3) !important;
-    font-size: .7rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: .05em !important;
-    border-radius: var(--r-sm) !important;
-    padding: 4px 10px !important;
-}
-#refresh-btn button:hover {
-    color: var(--accent) !important;
-    border-color: var(--accent) !important;
-}
+#refresh-btn-wrap { margin-top: 12px; border-top: 1px solid var(--border); padding: 12px 16px !important; }
+
+.history-item { transition: all 0.2s ease; }
+.history-item:hover { transform: translateX(4px); }
 
 /* ── Responsive ── */
-@media(max-width: 768px) {
-    .info-col { display: none !important; }
-    .chat-col { padding: 8px !important; }
+@media(max-width: 1024px) {
+    .info-col { 
+        max-height: none !important;
+        position: static !important;
+        margin-top: 20px !important;
+        padding-right: 12px !important;
+    }
+    .inspector-card { height: 500px !important; }
 }
-@media(max-width: 480px) {
-    .icon-btn button, .send-btn button { width:32px!important; height:32px!important; }
+@media(max-width: 768px) {
+    .chat-col { padding: 8px !important; }
+    .inspector-card { height: 400px !important; }
 }
 """
 
@@ -684,7 +762,7 @@ HEADER_HTML = """
 
 PLACEHOLDER = """
 <div style="text-align:center;padding:50px 20px;color:#55524F;">
-  <div style="font-family:'IBM Plex Mono',monospace;font-size:1.2rem;color:#F5A623;margin-bottom:10px;">∑</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:1.2rem;color:#6366F1;margin-bottom:10px;">∑</div>
   <div style="font-size:.85rem;line-height:1.7;">
     Ask a JEE-level math problem.<br>
     Type, upload an image, or record audio.
@@ -701,7 +779,7 @@ def build_app() -> gr.Blocks:
 
     # Theme: minimal base, all styling via CSS
     theme = gr.themes.Base(
-        primary_hue="orange",
+        primary_hue="indigo",
         neutral_hue="slate",
     ).set(
         body_background_fill="#0E0E11",
@@ -709,8 +787,8 @@ def build_app() -> gr.Blocks:
         block_background_fill="#15151A",
         block_border_color="#2C2C35",
         input_background_fill="#1D1D23",
-        button_primary_background_fill="#F5A623",
-        button_primary_text_color="#0E0E11",
+        button_primary_background_fill="#6366F1",
+        button_primary_text_color="#FFFFFF",
     )
 
     with gr.Blocks(css=CSS, js=JS, title="Math Mentor AI", theme=theme) as app:
@@ -735,7 +813,6 @@ def build_app() -> gr.Blocks:
                     render_markdown=True,
                     bubble_full_width=False,
                     placeholder=PLACEHOLDER,
-                    height=500,
                     latex_delimiters=[
                     {"left": "$$",  "right": "$$",  "display": True},   # centred block
                     {"left": "$",   "right": "$",   "display": False},  # inline
@@ -744,66 +821,78 @@ def build_app() -> gr.Blocks:
                     ]
                 )
 
-                # Attach panel (hidden by default)
-                with gr.Column(visible=False, elem_classes=["attach-panel"]) as attach_panel:
-                    with gr.Tabs():
-                        with gr.Tab("📷 Image"):
-                            img_input = gr.Image(
-                                type="filepath",
-                                show_label=False,
-                                height=150,
-                            )
-                        with gr.Tab("🎤 Audio"):
-                            aud_input = gr.Audio(
-                                sources=["microphone", "upload"],
-                                type="filepath",
-                                show_label=False,
-                            )
+                with gr.Column(elem_classes=["input-area-wrap"]):
+                    # Attach panel (hidden by default)
+                    with gr.Column(visible=False, elem_classes=["attach-panel"]) as attach_panel:
+                        with gr.Tabs():
+                            with gr.Tab("📷 Image"):
+                                img_input = gr.Image(
+                                    type="filepath",
+                                    show_label=False,
+                                    height=150,
+                                )
+                            with gr.Tab("🎤 Audio"):
+                                aud_input = gr.Audio(
+                                    sources=["microphone", "upload"],
+                                    type="filepath",
+                                    show_label=False,
+                                )
 
-                # Input bar
-                with gr.Row(elem_classes=["input-bar"]):
-                    attach_btn = gr.Button("＋", elem_classes=["icon-btn"], min_width=36)
-                    msg_input  = gr.Textbox(
-                        placeholder="Type a math problem… (Enter to send)",
-                        elem_id="msg-input",
-                        show_label=False,
-                        container=False,
-                        lines=1,
-                        max_lines=5,
-                        scale=10,
-                    )
-                    send_btn = gr.Button("↑", elem_classes=["send-btn"], min_width=36, variant="primary")
+                    # 2. Live LaTeX Preview
+                    with gr.Column(visible=False) as preview_container:
+                        preview_md = gr.Markdown(elem_classes=["preview-wrap"], latex_delimiters=LATEX_DELIMS)
 
-                # Conditional Response UI (Hidden by default)
-                with gr.Column(visible=False) as fb_container:
-                    with gr.Row(elem_classes=["fb-strip"]):
-                        fb_up   = gr.Button("👍 Correct", elem_classes=["fb-btn"], size="sm")
-                        fb_down = gr.Button("👎 Wrong",   elem_classes=["fb-btn"], size="sm")
-                        fb_msg  = gr.Markdown("", elem_id="fb-msg", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
+                    # Conditional Response UI (NOW ABOVE input for better visibility)
+                    with gr.Column(visible=False, elem_id="hitl-outer") as hitl_container:
+                        with gr.Accordion("🔔 Our AI Confidence is Low", open=True):
+                            with gr.Column(elem_classes=["hitl-wrap"]):
+                                gr.Markdown("Can you please rewrite your question or provide a clarified prompt? This helps our math engine understand and give you a better answer.", latex_delimiters=LATEX_DELIMS)
+                                hitl_box = gr.Textbox(placeholder="Rewrite your question here…", lines=1)
+                                with gr.Row():
+                                    hitl_ok  = gr.Button("🚀 Submit Clarification",   variant="primary",   size="sm")
+                                    hitl_fix = gr.Button("✏️ Quick Edit",   variant="secondary", size="sm")
+                                hitl_msg = gr.Markdown("", latex_delimiters=LATEX_DELIMS)
 
-                with gr.Column(visible=False) as hitl_container:
-                    with gr.Accordion("🔔 Human Review", open=True):
-                        with gr.Column(elem_classes=["hitl-wrap"]):
-                            gr.Markdown("*AI confidence is low — review and approve or correct.*", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
-                            hitl_box = gr.Textbox(label="Corrected answer (leave blank to approve as-is)")
-                            with gr.Row():
-                                hitl_ok  = gr.Button("✅ Approve",   variant="primary",   size="sm")
-                                hitl_fix = gr.Button("✏️ Correct",   variant="secondary", size="sm")
-                            hitl_msg = gr.Markdown("", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
+                    with gr.Column(visible=False, elem_id="fb-outer") as fb_container:
+                        with gr.Row(elem_classes=["fb-strip"]):
+                            fb_up   = gr.Button("👍 Correct", elem_classes=["fb-btn"], size="sm")
+                            fb_down = gr.Button("👎 Wrong",   elem_classes=["fb-btn"], size="sm")
+                            fb_msg  = gr.Markdown("", elem_id="fb-msg", latex_delimiters=LATEX_DELIMS)
+
+                    # Input bar
+                    with gr.Row(elem_classes=["input-bar"]):
+                        attach_btn = gr.Button("＋", elem_classes=["icon-btn"], min_width=36)
+                        msg_input  = gr.Textbox(
+                            placeholder="Type a math problem… (Enter to send)",
+                            elem_id="msg-input",
+                            show_label=False,
+                            container=False,
+                            lines=1,
+                            max_lines=5,
+                            scale=10,
+                        )
+                        send_btn = gr.Button("↑", elem_classes=["send-btn"], min_width=36, variant="primary")
 
               
-            # ══ Info column ══════════════════════════════════════════════════
+            # ══ Info column (Inspector) ══════════════════════════════════════════════
             with gr.Column(scale=3, elem_classes=["info-col"]):
+                
+                with gr.Column(elem_classes=["inspector-card"]):
+                    with gr.Tabs(elem_classes=["side-tabs"]):
+                        
+                        with gr.Tab("🕑 History"):
+                            with gr.Column(elem_classes=["tab-content-inner"]):
+                                hist_md  = gr.Markdown("*Loading history…*", latex_delimiters=LATEX_DELIMS)
+                                with gr.Row(elem_id="refresh-btn-wrap"):
+                                    hist_btn = gr.Button("↻ Refresh", size="sm", elem_id="refresh-btn")
 
-                with gr.Accordion("🔧 Agent Trace", open=False, elem_classes=["side-card"]):
-                    trace_md = gr.Markdown("*Run a problem to see tool calls.*", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
+                        with gr.Tab("🔧 Trace"):
+                            with gr.Column(elem_classes=["tab-content-inner"]):
+                                trace_md = gr.Markdown("*Run a problem to see tool calls.*", latex_delimiters=LATEX_DELIMS)
 
-                with gr.Accordion("📚 Retrieved Context", open=True, elem_classes=["side-card"]):
-                    ctx_md = gr.Markdown("*Retrieved knowledge base chunks appear here.*", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
-
-                with gr.Accordion("🕑 History", open=False, elem_classes=["side-card"]):
-                    hist_md  = gr.Markdown("*Loading…*", latex_delimiters=[{"left": "$", "right": "$", "display": False}])
-                    hist_btn = gr.Button("↻ Refresh", size="sm")
+                        with gr.Tab("📚 Context"):
+                            with gr.Column(elem_classes=["tab-content-inner"]):
+                                ctx_md = gr.Markdown("*Retrieved knowledge base chunks.*", latex_delimiters=LATEX_DELIMS)
 
         # ── Wiring ────────────────────────────────────────────────────────────
 
@@ -827,14 +916,22 @@ def build_app() -> gr.Blocks:
             fn=on_send,
             inputs=[msg_input, img_input, aud_input, chatbot, memory_id],
             outputs=SEND_OUT,
-        )
+        ).then(lambda: (gr.update(visible=False), ""), outputs=[preview_container, preview_md])
 
-        # Enter key in textbox (Gradio .submit = Enter key)
+        # Enter key in textbox
         msg_input.submit(
             fn=on_send,
             inputs=[msg_input, img_input, aud_input, chatbot, memory_id],
             outputs=SEND_OUT,
-        )
+        ).then(lambda: (gr.update(visible=False), ""), outputs=[preview_container, preview_md])
+
+        # Live Preview implementation
+        def update_preview(text: str):
+            if not text or "$" not in text:
+                return gr.update(visible=False), ""
+            return gr.update(visible=True), f"<b>Live LaTeX Preview</b>\n{text}"
+        
+        msg_input.change(fn=update_preview, inputs=[msg_input], outputs=[preview_container, preview_md], queue=False)
 
         # Auto-solve when image is uploaded (only if no text needed)
         def on_image_upload(img_val, history, mem_id):
