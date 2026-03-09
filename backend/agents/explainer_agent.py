@@ -25,7 +25,9 @@ Rules:
     - The actual calculation.
 - If there were mistakes in the original solution, clearly point out what went wrong.
 - End with a short "Exam Tip" relevant to this problem type.
-- Use plain text math notation (e.g. x^2, sqrt(x), integral of f dx). No LaTeX.
+- Use LaTeX for ALL mathematical notation. 
+- Use $...$ for inline math (e.g. $x^2$) and $$...$$ for multi-line block equations.
+- Ensure complex symbols like integrals, square roots, and fractions are correctly formatted in LaTeX.
 - Keep it concise but complete — a student should be able to follow every step."""
 
 _HUMAN = """Problem:

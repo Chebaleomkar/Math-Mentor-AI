@@ -1,35 +1,88 @@
+"""
+agents/solver_agent.py
+----------------------
+Main reasoning agent that solves math problems using tools.
+
+Uses:
+- RAG retrieval for formulas
+- SymPy tools for symbolic math
+- Python sandbox for numeric computation
+"""
+
+import re
+from typing import List
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents import AgentExecutor, create_tool_calling_agent
-import re
 
 from llm_router.router import router
 from tools.rag_tool import retrieve_context
 from tools.sympy_tool import solve_equation, derivative, integrate_expr, simplify_expr
 from tools.python_tool import execute_python
+
 from models.schemas import ParsedProblem, SolverResult, ToolCall
 
 
-_SYSTEM = """You are an expert JEE-level Math Solver Agent.
+# ──────────────────────────────────────────────────────────────
+# SYSTEM PROMPT (Improved for reliable tool calling)
+# ──────────────────────────────────────────────────────────────
+_SYSTEM = """
+You are an expert JEE-level mathematics solver.
 
-You receive a structured math problem and must return a complete, correct solution.
+Your goal is to solve challenging mathematics problems accurately and clearly.
 
-Guidelines:
-- Think step-by-step BEFORE calling any tool.
-- Use `retrieve_context` to look up formulas or theorems you are not 100% certain about.
-- Use `solve_equation`, `derivative`, `integrate_expr`, or `simplify_expr` for exact symbolic work.
-- Use `execute_python` for numerical verification, combinatorics (nCr, nPr), or complex arithmetic.
-- Only call tools when they genuinely help — do not use them unnecessarily.
+You have strong reasoning ability and mathematical knowledge. Use logical
+step-by-step reasoning to derive the solution.
 
-After arriving at the answer, write a line that starts exactly with:
+You also have access to external tools that can help with symbolic algebra,
+calculus, and numerical computation.
 
-FINAL ANSWER: <your answer>
+AVAILABLE TOOLS
+---------------
+1. retrieve_context → look up formulas, theorems, and solution templates
+2. solve_equation → solve algebraic equations symbolically
+3. derivative → compute symbolic derivatives
+4. integrate_expr → compute symbolic integrals
+5. simplify_expr → simplify expressions
+6. execute_python → perform numerical computation or verification
 
-Problem topic: {topic}
-Constraints: {constraints}
+
+HOW TO SOLVE PROBLEMS
+---------------------
+
+1. First analyze the problem carefully.
+2. Use mathematical reasoning to determine the correct method.
+3. Perform algebraic manipulation mentally when possible.
+4. Use tools when they are helpful for:
+   - symbolic algebra
+   - solving equations
+   - calculus operations
+   - complex arithmetic
+   - verifying results
+
+IMPORTANT GUIDELINES
+--------------------
+
+• Tools are helpers, not mandatory steps.
+• You may solve parts of the problem using reasoning alone.
+• Use tools when computation would be tedious, error-prone, or symbolic.
+• Never fabricate tool outputs.
+• If you call a tool, use its result in the reasoning.
+
+Always explain your reasoning clearly step by step.
+
+When the solution is complete, end with:
+
+FINAL ANSWER: <result>
+
+Do not include anything after the final answer.
 """
 
+# ──────────────────────────────────────────────────────────────
+# Utility: Serialize intermediate tool calls
+# ──────────────────────────────────────────────────────────────
 
-def _serialize_steps(intermediate_steps) -> list[ToolCall]:
+def _serialize_steps(intermediate_steps) -> List[ToolCall]:
     calls = []
 
     for action, observation in intermediate_steps:
@@ -44,11 +97,17 @@ def _serialize_steps(intermediate_steps) -> list[ToolCall]:
     return calls
 
 
+# ──────────────────────────────────────────────────────────────
+# Solver Agent
+# ──────────────────────────────────────────────────────────────
+
 class SolverAgent:
 
     def __init__(self):
+
         self.llm = router.get_llm()
 
+        # Registered tools
         self.tools = [
             retrieve_context,
             solve_equation,
@@ -58,14 +117,25 @@ class SolverAgent:
             execute_python,
         ]
 
+        # Prompt template
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", _SYSTEM),
-            ("human", "{problem_text}"),
+            ("human",
+             "Solve the following math problem.\n\n"
+             "Problem: {problem_text}\n"
+             "Topic: {topic}\n"
+             "Constraints: {constraints}\n"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
 
-        agent = create_tool_calling_agent(self.llm, self.tools, self.prompt)
+        # Create tool-calling agent
+        agent = create_tool_calling_agent(
+            self.llm,
+            self.tools,
+            self.prompt
+        )
 
+        # Executor
         self.executor = AgentExecutor(
             agent=agent,
             tools=self.tools,
@@ -75,25 +145,39 @@ class SolverAgent:
             return_intermediate_steps=True,
         )
 
+    # ──────────────────────────────────────────────────────────
+    # Run Solver
+    # ──────────────────────────────────────────────────────────
+
     def run(self, parsed_problem: ParsedProblem) -> SolverResult:
 
         constraints = parsed_problem.constraints or ["none"]
 
-        response = self.executor.invoke({
-            "problem_text": parsed_problem.problem_text,
-            "topic": parsed_problem.topic,
-            "constraints": ", ".join(constraints),
-        })
+        try:
+
+            response = self.executor.invoke({
+                "problem_text": parsed_problem.problem_text,
+                "topic": parsed_problem.topic,
+                "constraints": ", ".join(constraints),
+            })
+
+        except Exception as e:
+
+            return SolverResult(
+                solution=f"Solver failed: {str(e)}",
+                final_answer="ERROR",
+                tool_calls=[]
+            )
 
         raw_output = response.get("output", "")
 
-        # Extract final answer safely
+        # Extract final answer
         match = re.search(r"FINAL ANSWER\s*:\s*(.+)", raw_output, re.IGNORECASE)
 
         if match:
             final_answer = match.group(1).strip()
         else:
-            final_answer = raw_output
+            final_answer = raw_output.strip()
 
         tool_calls = _serialize_steps(response.get("intermediate_steps", []))
 

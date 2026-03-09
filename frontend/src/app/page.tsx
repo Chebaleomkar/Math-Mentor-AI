@@ -71,10 +71,10 @@ export default function Home() {
     setMessages(prev => prev.map(msg => msg.id === id ? { ...msg, ...updates } : msg));
   };
 
-  const handleSolveText = async (query: string, inputType: "text" | "image" | "audio" = "text") => {
+  const handleSolveText = async (query: string, inputType: "text" | "image" | "audio" = "text", silent = false) => {
     if (!query.trim()) return;
 
-    if (inputType === "text") {
+    if (inputType === "text" && !silent) {
       setInputValue("");
       addMessage({ role: "user", type: "text", content: query });
     }
@@ -144,7 +144,7 @@ export default function Home() {
 
       // If confident, automatically solve
       if (!needs_review && confidence !== "low") {
-        handleSolveText(extracted_text, "image");
+        handleSolveText(extracted_text, "text", true);
       }
     } catch (error: any) {
       updateMessage(aiMsgId, {
@@ -368,7 +368,7 @@ export default function Home() {
                             className="bg-orange-600 hover:bg-orange-700 text-white"
                             onClick={() => {
                               updateMessage(msg.id, { needsReview: false });
-                              handleSolveText(msg.content, msg.type);
+                              handleSolveText(msg.content, "text", true);
                             }}
                           >
                             <CheckCircle2 className="w-4 h-4 mr-2" /> Looks Good, Solve It
