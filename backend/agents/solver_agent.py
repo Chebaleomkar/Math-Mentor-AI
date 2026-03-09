@@ -150,36 +150,41 @@ class SolverAgent:
     # ──────────────────────────────────────────────────────────
 
     def run(self, parsed_problem: ParsedProblem) -> SolverResult:
-
         constraints = parsed_problem.constraints or ["none"]
 
         try:
-
             response = self.executor.invoke({
                 "problem_text": parsed_problem.problem_text,
                 "topic": parsed_problem.topic,
                 "constraints": ", ".join(constraints),
             })
+            raw_output = response.get("output", "").strip()
+            tool_calls = _serialize_steps(response.get("intermediate_steps", []))
 
         except Exception as e:
-
+            # Provide more context in case of API or Runtime failures
+            error_msg = str(e)
             return SolverResult(
-                solution=f"Solver failed: {str(e)}",
-                final_answer="ERROR",
+                solution=f"### Solver Exception\nAn internal error occurred while reasoning: `{error_msg}`",
+                final_answer=f"SOLVER_ERROR: {error_msg[:30]}...",
                 tool_calls=[]
             )
 
-        raw_output = response.get("output", "")
-
-        # Extract final answer
-        match = re.search(r"FINAL ANSWER\s*:\s*(.+)", raw_output, re.IGNORECASE)
-
-        if match:
-            final_answer = match.group(1).strip()
+        # ── Extraction logic ──
+        # Search for the LAST occurrence of 'FINAL ANSWER:'
+        matches = list(re.finditer(r"FINAL ANSWER\s*:\s*(.+)", raw_output, re.IGNORECASE))
+        if matches:
+            final_answer = matches[-1].group(1).strip()
         else:
-            final_answer = raw_output.strip()
-
-        tool_calls = _serialize_steps(response.get("intermediate_steps", []))
+            lines = [l for l in raw_output.split("\n") if l.strip()]
+            if lines:
+                last_line = lines[-1].strip()
+                if len(last_line) < 40:
+                    final_answer = last_line
+                else:
+                    final_answer = "Review solution above"
+            else:
+                final_answer = "N/A"
 
         return SolverResult(
             solution=raw_output,

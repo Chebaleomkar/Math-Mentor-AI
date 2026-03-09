@@ -8,6 +8,7 @@ clear, step-by-step student-friendly explanation with:
   - Common mistake warning (if verifier found issues)
   - Exam tip
 """
+import re
 from langchain_core.prompts import ChatPromptTemplate
 
 from llm_router.router import router
@@ -72,8 +73,17 @@ class ExplainerAgent:
             "issues": "; ".join(verifier_result.issues) if verifier_result.issues else "None",
         })
 
+        explanation_text = response.content.strip()
+
+        # If solver returned an error or something messy, try to recover the final answer 
+        # from the explainer's output (which often contains the correct answer at the end)
+        if "ERROR" in str(final_answer).upper() or len(str(final_answer)) > 80:
+             matches = list(re.finditer(r"Final Answer[:\s]+(.+)", explanation_text, re.IGNORECASE))
+             if matches:
+                 final_answer = matches[-1].group(1).strip().rstrip('.')
+
         return ExplanationResult(
-            explanation=response.content.strip(),
+            explanation=explanation_text,
             final_answer=final_answer,
             confidence=verifier_result.confidence,
         )
