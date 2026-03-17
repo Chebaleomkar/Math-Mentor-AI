@@ -93,7 +93,7 @@ export function MathRenderer({ content, className = '' }: MathRendererProps) {
 
     // Code blocks
     processedContent = processedContent.replace(
-      /```([^`]+)```/gs,
+      /```([\s\S]+?)```/g,
       '<pre class="math-code-block"><code>$1</code></pre>'
     );
 
