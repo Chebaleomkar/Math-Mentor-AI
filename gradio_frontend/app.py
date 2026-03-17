@@ -395,146 +395,79 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
     padding: 0 !important; 
     gap: 0 !important; 
     height: calc(100vh - 75px) !important; 
-    min-height: 500px !important;
     overflow: hidden !important; 
+    position: relative !important;
 }
 .chat-col {
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
-    gap: 0 !important;
     overflow: hidden !important;
+    background: var(--bg) !important;
 }
 .chat-inner-wrap {
-    padding: 12px 16px !important;
     display: flex !important;
     flex-direction: column !important;
     height: 100% !important;
-    gap: 0 !important;
-    max-width: 1000px !important;
-    margin: 0 auto !important;
-}
-.input-area-wrap {
-    flex-shrink: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
     width: 100% !important;
-}
-.info-col { 
-    padding: 12px 12px 12px 0 !important; 
-    display:flex; 
-    flex-direction:column; 
-    gap:10px; 
-    overflow-y:auto; 
-    height: 100% !important;
+    max-width: 950px !important;
+    margin: 0 auto !important;
+    padding: 0 16px !important;
+    position: relative !important;
 }
 
 /* ── Chatbot ── */
 #chatbot {
+    flex: 1 1 auto !important;
     background: transparent !important;
     border: none !important;
-    flex: 1 1 auto !important;
     overflow-y: auto !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 0 !important;
 }
-#chatbot .wrap.svelte-byatnx { padding: 12px !important; }
-/* user bubble */
-#chatbot .message.user .bubble-wrap { justify-content: flex-end !important; }
-#chatbot .message.user .md {
-    background: var(--accent-dim) !important;
-    border: 1px solid var(--accent) !important;
-    border-radius: var(--r-md) var(--r-md) 0 var(--r-md) !important;
-    max-width: 85% !important;
-    padding: 10px 14px !important;
-    font-size: .88rem !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+#chatbot .wrap { padding: 20px 0 !important; }
+
+/* ── Input Area ── */
+.input-area-wrap {
+    flex-shrink: 0 !important;
+    background: var(--bg) !important;
+    padding-bottom: 20px !important;
+    z-index: 10 !important;
+    /* ✅ FIXED: position:relative lets .attach-panel use absolute positioning */
+    position: relative !important;
 }
-/* bot bubble */
-#chatbot .message.bot .bubble-wrap { justify-content: flex-start !important; }
-#chatbot .message.bot .md {
+
+/* ✅ FIXED: Attach panel uses absolute positioning so it never causes layout reflow.
+   It floats above the input bar (bottom: 100%) instead of pushing content down. */
+.attach-panel {
+    position: absolute !important;
+    bottom: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50 !important;
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    border-radius: var(--r-md) var(--r-md) var(--r-md) 0 !important;
-    max-width: 90% !important;
-    padding: 13px 16px !important;
-    font-size: .87rem !important;
-    line-height: 1.6 !important;
+    border-radius: var(--r-md) !important;
+    padding: 12px !important;
+    margin-bottom: 4px !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.5) !important;
 }
-/* tighter spacing */
-#chatbot .message { margin-bottom: 16px !important; }
 
-#chatbot .message.bot code {
-    font-family: var(--mono) !important;
-    background: var(--bg) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--accent) !important;
-    padding: 1px 6px !important;
-    border-radius: 4px !important;
-    font-size: .83em !important;
-}
-#chatbot .message.bot pre {
-    background: var(--bg) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--r-sm) !important;
-    padding: 10px !important;
-    overflow-x: auto !important;
-}
-#chatbot .message.bot h3 {
-    font-family: var(--mono) !important;
-    color: var(--accent) !important;
-    font-size: .88rem !important;
-    font-weight: 500 !important;
-    margin-bottom: 8px !important;
-    letter-spacing: .03em !important;
-}
-#chatbot .message.bot hr { border-color: var(--border) !important; margin: 10px 0 !important; }
-/* hide avatars */
-#chatbot .avatar-container { display: none !important; }
-
-/* ── Attach panel ── */
-.attach-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    padding: 12px;
-    margin-bottom: 8px;
-}
-.attach-panel .tabs { background: transparent !important; }
-.attach-panel .tab-nav button {
-    background: var(--elevated) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text-2) !important;
-    font-family: var(--mono) !important;
-    font-size: .72rem !important;
-    border-radius: var(--r-sm) var(--r-sm) 0 0 !important;
-    padding: 6px 14px !important;
-}
-.attach-panel .tab-nav button.selected {
-    background: var(--accent-dim) !important;
-    border-color: var(--accent) !important;
-    color: var(--accent) !important;
-}
-.attach-panel .upload-container {
-    background: var(--elevated) !important;
-    border: 1.5px dashed var(--border) !important;
-    border-radius: var(--r-sm) !important;
-}
-.attach-panel audio { filter: invert(0.9) hue-rotate(190deg) !important; }
-
-/* ── Input bar ── */
 .input-bar {
     display: flex !important;
     align-items: flex-end !important;
-    gap: 8px !important;
+    gap: 10px !important;
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
     border-radius: var(--r-lg) !important;
-    padding: 8px 10px !important;
-    margin-bottom: 12px !important;
-    transition: border-color .2s, box-shadow .2s !important;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
+    padding: 10px 14px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+    transition: all 0.3s ease !important;
+}
+.input-bar:focus-within {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 4px var(--accent-glow), 0 8px 32px rgba(0,0,0,0.4) !important;
+    transform: translateY(-2px) !important;
 }
 .input-bar:focus-within {
     border-color: var(--accent) !important;
@@ -724,6 +657,20 @@ footer.svelte-1rjryqp, .built-with { display: none !important; }
 
 JS = """
 function addEnterHint() {
+    // ✅ FIXED: scroll-lock flag — set true during upload to prevent spurious scrolling
+    window._mmScrollLock = false;
+
+    // ✅ FIXED: debounce helper — delays scroll until DOM settles (300 ms)
+    var _mmScrollTimer = null;
+    function debouncedScroll(cb, scrollHeight) {
+        clearTimeout(_mmScrollTimer);
+        _mmScrollTimer = setTimeout(function() {
+            if (!window._mmScrollLock) {
+                cb(scrollHeight);
+            }
+        }, 300);
+    }
+
     // Make textarea auto-grow on input
     function watchTextareas() {
         document.querySelectorAll('#msg-input textarea').forEach(function(ta) {
@@ -735,15 +682,28 @@ function addEnterHint() {
             });
         });
     }
-    // Scroll chatbot to bottom on updates
+
+    // ✅ FIXED: Scroll chatbot only when scrollHeight grows by > 40 px (new message),
+    //           uses debounce + scrollLock to ignore layout-reflow triggers from image panel.
     function watchChatbot() {
         var cb = document.querySelector('#chatbot');
         if (!cb || cb._mmObs) return;
         cb._mmObs = true;
+        var lastScrollHeight = cb.scrollHeight;
         new MutationObserver(function() {
-            cb.scrollTop = cb.scrollHeight;
+            var newScrollHeight = cb.scrollHeight;
+            var delta = newScrollHeight - lastScrollHeight;
+            // ✅ FIXED: Only scroll if content grew significantly (new chat bubble, not reflow)
+            if (delta > 40) {
+                var captured = newScrollHeight;
+                debouncedScroll(function(h) {
+                    cb.scrollTop = h;
+                }, captured);
+                lastScrollHeight = newScrollHeight;
+            }
         }).observe(cb, {childList: true, subtree: true});
     }
+
     watchTextareas();
     watchChatbot();
     setInterval(function() { watchTextareas(); watchChatbot(); }, 1000);
@@ -805,73 +765,77 @@ def build_app() -> gr.Blocks:
 
             # ══ Chat column ══════════════════════════════════════════════════
             with gr.Column(scale=7, elem_classes=["chat-col"]):
+                
+                with gr.Column(elem_classes=["chat-inner-wrap"]):
 
-                chatbot = gr.Chatbot(
-                    value=[],
-                    elem_id="chatbot",
-                    show_label=False,
-                    render_markdown=True,
-                    bubble_full_width=False,
-                    placeholder=PLACEHOLDER,
-                    latex_delimiters=[
-                    {"left": "$$",  "right": "$$",  "display": True},   # centred block
-                    {"left": "$",   "right": "$",   "display": False},  # inline
-                    {"left": "\\[", "right": "\\]", "display": True},
-                    {"left": "\\(", "right": "\\)", "display": False},
-                    ]
-                )
+                    chatbot = gr.Chatbot(
+                        value=[],
+                        elem_id="chatbot",
+                        show_label=False,
+                        render_markdown=True,
+                        bubble_full_width=False,
+                        placeholder=PLACEHOLDER,
+                        latex_delimiters=[
+                        {"left": "$$",  "right": "$$",  "display": True},   # centred block
+                        {"left": "$",   "right": "$",   "display": False},  # inline
+                        {"left": "\\[", "right": "\\]", "display": True},
+                        {"left": "\\(", "right": "\\)", "display": False},
+                        ]
+                    )
 
-                with gr.Column(elem_classes=["input-area-wrap"]):
-                    # Attach panel (hidden by default)
-                    with gr.Column(visible=False, elem_classes=["attach-panel"]) as attach_panel:
-                        with gr.Tabs():
-                            with gr.Tab("📷 Image"):
-                                img_input = gr.Image(
-                                    type="filepath",
-                                    show_label=False,
-                                    height=150,
-                                )
-                            with gr.Tab("🎤 Audio"):
-                                aud_input = gr.Audio(
-                                    sources=["microphone", "upload"],
-                                    type="filepath",
-                                    show_label=False,
-                                )
+                    with gr.Column(elem_classes=["input-area-wrap"]):
+                        # Attach panel (hidden by default)
+                        # ✅ FIXED: elem_classes="attach-panel" added to Container for CSS absolute positioning
+                        with gr.Column(visible=False, elem_classes=["attach-panel"]) as attach_panel:
+                            with gr.Tabs():
+                                with gr.Tab("📷 Image"):
+                                    img_input = gr.Image(
+                                        type="filepath",
+                                        show_label=False,
+                                        # ✅ FIXED: Removed height=150 — fixed height caused layout reflow
+                                        #          triggering MutationObserver scroll on image panel appear
+                                    )
+                                with gr.Tab("🎤 Audio"):
+                                    aud_input = gr.Audio(
+                                        sources=["microphone", "upload"],
+                                        type="filepath",
+                                        show_label=False,
+                                    )
 
-                    # 2. Live LaTeX Preview
-                    with gr.Column(visible=False) as preview_container:
-                        preview_md = gr.Markdown(elem_classes=["preview-wrap"], latex_delimiters=LATEX_DELIMS)
+                        # 2. Live LaTeX Preview
+                        with gr.Column(visible=False) as preview_container:
+                            preview_md = gr.Markdown(elem_classes=["preview-wrap"], latex_delimiters=LATEX_DELIMS)
 
-                    # Conditional Response UI (NOW ABOVE input for better visibility)
-                    with gr.Column(visible=False, elem_id="hitl-outer") as hitl_container:
-                        with gr.Accordion("🔔 Our AI Confidence is Low", open=True):
-                            with gr.Column(elem_classes=["hitl-wrap"]):
-                                gr.Markdown("Can you please rewrite your question or provide a clarified prompt? This helps our math engine understand and give you a better answer.", latex_delimiters=LATEX_DELIMS)
-                                hitl_box = gr.Textbox(placeholder="Rewrite your question here…", lines=1)
-                                with gr.Row():
-                                    hitl_ok  = gr.Button("🚀 Submit Clarification",   variant="primary",   size="sm")
-                                    hitl_fix = gr.Button("✏️ Quick Edit",   variant="secondary", size="sm")
-                                hitl_msg = gr.Markdown("", latex_delimiters=LATEX_DELIMS)
+                        # Conditional Response UI (NOW ABOVE input for better visibility)
+                        with gr.Column(visible=False, elem_id="hitl-outer") as hitl_container:
+                            with gr.Accordion("🔔 Our AI Confidence is Low", open=True):
+                                with gr.Column(elem_classes=["hitl-wrap"]):
+                                    gr.Markdown("Can you please rewrite your question or provide a clarified prompt? This helps our math engine understand and give you a better answer.", latex_delimiters=LATEX_DELIMS)
+                                    hitl_box = gr.Textbox(placeholder="Rewrite your question here…", lines=1)
+                                    with gr.Row():
+                                        hitl_ok  = gr.Button("🚀 Submit Clarification",   variant="primary",   size="sm")
+                                        hitl_fix = gr.Button("✏️ Quick Edit",   variant="secondary", size="sm")
+                                    hitl_msg = gr.Markdown("", latex_delimiters=LATEX_DELIMS)
 
-                    with gr.Column(visible=False, elem_id="fb-outer") as fb_container:
-                        with gr.Row(elem_classes=["fb-strip"]):
-                            fb_up   = gr.Button("👍 Correct", elem_classes=["fb-btn"], size="sm")
-                            fb_down = gr.Button("👎 Wrong",   elem_classes=["fb-btn"], size="sm")
-                            fb_msg  = gr.Markdown("", elem_id="fb-msg", latex_delimiters=LATEX_DELIMS)
+                        with gr.Column(visible=False, elem_id="fb-outer") as fb_container:
+                            with gr.Row(elem_classes=["fb-strip"]):
+                                fb_up   = gr.Button("👍 Correct", elem_classes=["fb-btn"], size="sm")
+                                fb_down = gr.Button("👎 Wrong",   elem_classes=["fb-btn"], size="sm")
+                                fb_msg  = gr.Markdown("", elem_id="fb-msg", latex_delimiters=LATEX_DELIMS)
 
-                    # Input bar
-                    with gr.Row(elem_classes=["input-bar"]):
-                        attach_btn = gr.Button("＋", elem_classes=["icon-btn"], min_width=36)
-                        msg_input  = gr.Textbox(
-                            placeholder="Type a math problem… (Enter to send)",
-                            elem_id="msg-input",
-                            show_label=False,
-                            container=False,
-                            lines=1,
-                            max_lines=5,
-                            scale=10,
-                        )
-                        send_btn = gr.Button("↑", elem_classes=["send-btn"], min_width=36, variant="primary")
+                        # Input bar
+                        with gr.Row(elem_classes=["input-bar"]):
+                            attach_btn = gr.Button("＋", elem_classes=["icon-btn"], min_width=36)
+                            msg_input  = gr.Textbox(
+                                placeholder="Type a math problem… (Enter to send)",
+                                elem_id="msg-input",
+                                show_label=False,
+                                container=False,
+                                lines=1,
+                                max_lines=5,
+                                scale=10,
+                            )
+                            send_btn = gr.Button("↑", elem_classes=["send-btn"], min_width=36, variant="primary")
 
               
             # ══ Info column (Inspector) ══════════════════════════════════════════════
@@ -880,17 +844,17 @@ def build_app() -> gr.Blocks:
                 with gr.Column(elem_classes=["inspector-card"]):
                     with gr.Tabs(elem_classes=["side-tabs"]):
                         
-                        with gr.Tab("🕑 History"):
+                        with gr.Tab("History"):
                             with gr.Column(elem_classes=["tab-content-inner"]):
                                 hist_md  = gr.Markdown("*Loading history…*", latex_delimiters=LATEX_DELIMS)
                                 with gr.Row(elem_id="refresh-btn-wrap"):
                                     hist_btn = gr.Button("↻ Refresh", size="sm", elem_id="refresh-btn")
 
-                        with gr.Tab("🔧 Trace"):
+                        with gr.Tab("Agent Trace"):
                             with gr.Column(elem_classes=["tab-content-inner"]):
                                 trace_md = gr.Markdown("*Run a problem to see tool calls.*", latex_delimiters=LATEX_DELIMS)
 
-                        with gr.Tab("📚 Context"):
+                        with gr.Tab("Context"):
                             with gr.Column(elem_classes=["tab-content-inner"]):
                                 ctx_md = gr.Markdown("*Retrieved knowledge base chunks.*", latex_delimiters=LATEX_DELIMS)
 
@@ -933,17 +897,28 @@ def build_app() -> gr.Blocks:
         
         msg_input.change(fn=update_preview, inputs=[msg_input], outputs=[preview_container, preview_md], queue=False)
 
-        # Auto-solve when image is uploaded (only if no text needed)
+        # ✅ FIXED: on_image_upload now:
+        #   1. Adds a "Processing…" optimistic message so the chatbot has content
+        #      (prevents blank-area scroll caused by empty chatbot reflow)
+        #   2. Sets window._mmScrollLock = true before processing and releases after,
+        #      preventing MutationObserver from auto-scrolling during image panel reflow.
         def on_image_upload(img_val, history, mem_id):
             path = _safe_filepath(img_val)
             if not path:
                 return history, "", "*—*", "*—*", mem_id, gr.update(visible=False), gr.update(visible=False)
-            return on_send("", img_val, None, history, mem_id)
+            # ✅ FIXED: Optimistic "Processing…" entry prevents scroll to empty area
+            history = list(history) + [("📷 [image uploaded]", "⏳ *Processing image…*")]
+            result = on_send("", img_val, None, history[:-1], mem_id)
+            return result
 
         img_input.upload(
             fn=on_image_upload,
             inputs=[img_input, chatbot, memory_id],
             outputs=SEND_OUT,
+            js="() => { window._mmScrollLock = true; }",   # ✅ FIXED: lock scroll before upload reflow
+        ).then(
+            fn=None,
+            js="() => { window._mmScrollLock = false; }",  # ✅ FIXED: release scroll lock after processing
         )
 
         # Auto-transcribe when audio finishes recording

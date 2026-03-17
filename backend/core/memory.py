@@ -78,8 +78,13 @@ def _get_embedder() -> GoogleGenerativeAIEmbeddings:
 
 
 def _embed(text: str) -> np.ndarray:
-    """Return a 768-dim float32 numpy array for a problem text string."""
-    vec = _get_embedder().embed_query(text)   # embed_query works for single strings
+    """Return a 768-dim float32 numpy array for a problem text string.
+    Guards against empty strings which cause 400 errors from Gemini.
+    """
+    if not text or not text.strip():
+        return np.zeros(settings.EMBEDDING_DIMENSIONS, dtype=np.float32)
+        
+    vec = _get_embedder().embed_query(text)
     return np.array(vec, dtype=np.float32)
 
 
@@ -164,6 +169,9 @@ def find_similar(
     - Skips records explicitly marked 'incorrect' by the user.
     - Returns lightweight dicts with: id, problem_text, final_answer, similarity.
     """
+    if not problem_text or not problem_text.strip():
+        return []
+
     with _get_conn() as conn:
         rows = conn.execute(
             "SELECT id, problem_text, final_answer, embedding, user_feedback "

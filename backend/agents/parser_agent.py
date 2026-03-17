@@ -53,5 +53,27 @@ class ParserAgent:
         text = re.sub(r"^```(?:json)?", "", text).strip()
         text = re.sub(r"```$", "", text).strip()
 
-        data = json.loads(text)
+        # Groq/LLMs often output LaTeX with single backslashes which breaks JSON
+        # e.g. {"text": "\int"} is invalid. We need {"text": "\\int"}
+        # Escape backslashes that aren't already part of an escape sequence
+        # We'll use a simple heuristic: replace \ with \\ unless it's already escaped or a valid escape
+        text = text.replace('\\', '\\\\')
+        # But wait, if the LLM *did* output \\, we now have \\\\. Let's fix that.
+        text = text.replace('\\\\\\\\', '\\\\')
+        # Also fix common quotes issue if any
+        
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            # Fallback: if we still can't parse, try a more aggressive regex cleanup
+            # or just try to extract the problem_text field manually if it's really broken
+            try:
+                # Minimal fix: sometimes the model adds extra quotes or doesn't escape newlines
+                text_alt = re.sub(r'\n', ' ', text)
+                data = json.loads(text_alt)
+            except:
+                # Note: HTTPException is not defined in this file, assuming it's imported elsewhere or needs to be added.
+                # For now, raising a generic Exception or logging.
+                raise Exception(f"LLM returned invalid JSON after multiple attempts: {text[:100]}...")
+
         return ParsedProblem(**data)

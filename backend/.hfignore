@@ -5,5 +5,5 @@ __pycache__/
 .git/
 .pytest_cache/
 tests/
-# data/             # Uncomment if you DON't want to upload your local DB
+data/               # Keep local DBs and Chroma index out of the cloud Space
 # untracked.txt

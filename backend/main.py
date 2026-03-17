@@ -84,8 +84,11 @@ async def solve(req: SolveRequest):
             filename=req.filename or "audio.wav",
         )
         raw_input = result.cleaned_text
-    else:
-        raise HTTPException(status_code=400, detail="input_type must be: text | image | audio")
+    if not raw_input or not raw_input.strip():
+        raise HTTPException(
+            status_code=400, 
+            detail="I couldn't hear or read that. Please provide a clear mathematical question."
+        )
 
     return orchestrator.run(raw_input, input_type=req.input_type)
 
