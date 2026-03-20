@@ -39,7 +39,34 @@ class Orchestrator:
         # 1. Parse raw input → structured problem
         parsed = self.parser.run(raw_input)
 
-        # 2. Memory lookup — find similar past problems
+        # 2. Check for an approved/stable match in memory (CACHING SHORTCUT)
+        cached_record = mem_store.find_cached_match(
+            problem_text=parsed.problem_text, 
+            raw_input=raw_input
+        )
+        if cached_record:
+            # We found a perfect match! Bypass the entire pipeline.
+            # Reuse the original memory_id so feedback is linked.
+            cached_id = cached_record["id"]
+            
+            from models.schemas import SolverResult, VerifierResult, ExplanationResult
+            
+            solver_res = SolverResult(**cached_record["solver_result"])
+            verifier_res = VerifierResult(**cached_record["verifier_result"])
+            expl_res = ExplanationResult(**cached_record["explanation"])
+            
+            return SolveResponse(
+                parsed_problem=parsed,
+                solver_result=solver_res,
+                verifier_result=verifier_res,
+                explanation=expl_res,
+                retrieved_sources=[], # No RAG performed for cache hit
+                hitl_required=False,
+                is_cache_hit=True,
+                memory_id=cached_id,
+            )
+
+        # 3. Memory lookup — find similar past problems for HINTS (for non-cache cases)
         similar = mem_store.find_similar(parsed.problem_text, top_k=3)
         if similar:
             hint_block = "\n\n[MEMORY CONTEXT — similar solved problems]\n"
@@ -48,7 +75,7 @@ class Orchestrator:
             # Append memory hints so solver can reuse patterns
             parsed.problem_text += hint_block
 
-        # 3. Retrieve RAG context for UI display (solver agent also calls internally)
+        # 4. Retrieve RAG context for UI display (solver agent also calls internally)
         raw_chunks = get_retrieved_chunks(parsed.problem_text)
         retrieved_sources = [
             RetrievedSource(
@@ -61,16 +88,16 @@ class Orchestrator:
             for c in raw_chunks
         ]
 
-        # 4. Solve
+        # 5. Solve
         solver_result = self.solver.run(parsed)
 
-        # 5. Verify
+        # 6. Verify
         verifier_result = self.verifier.run(parsed, solver_result)
 
-        # 6. Explain
+        # 7. Explain
         explanation = self.explainer.run(parsed, solver_result, verifier_result)
 
-        # 7. Persist to memory
+        # 8. Persist to memory
         mem_id = str(uuid.uuid4())
         record = MemoryRecord(
             id=mem_id,
@@ -92,6 +119,7 @@ class Orchestrator:
             explanation=explanation,
             retrieved_sources=retrieved_sources,
             hitl_required=hitl_required,
+            is_cache_hit=False,
             memory_id=mem_id,
         )
 

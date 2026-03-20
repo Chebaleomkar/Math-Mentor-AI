@@ -131,6 +131,7 @@ class SolveResponse(BaseModel):
     explanation: ExplanationResult
     retrieved_sources: List[RetrievedSource] = Field(default_factory=list)
     hitl_required: bool = Field(default=False)
+    is_cache_hit: bool = Field(default=False)
     memory_id: str
 
 

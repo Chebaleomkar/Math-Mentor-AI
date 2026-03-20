@@ -104,6 +104,12 @@ def save_record(record) -> str:
     from models.schemas import MemoryRecord
 
     if not isinstance(record, MemoryRecord):
+        # Already a dict/JSON
+        if hasattr(record, "model_dump"):
+            record = record.model_dump()
+        else:
+             # Just assume it's a dict
+             pass
         record = MemoryRecord(**record)
 
     rec_id = record.id or str(uuid.uuid4())
@@ -143,14 +149,15 @@ def update_feedback(memory_id: str, feedback: str, comment: Optional[str] = None
             "SELECT full_record FROM memory WHERE id = ?", (memory_id,)
         ).fetchone()
 
-        if not row:
-            return
+    if not row:
+        return
 
-        data = json.loads(row["full_record"])
-        data["user_feedback"] = feedback
-        if comment:
-            data["user_comment"] = comment
+    data = json.loads(row["full_record"])
+    data["user_feedback"] = feedback
+    if comment:
+        data["user_comment"] = comment
 
+    with _get_conn() as conn:
         conn.execute(
             "UPDATE memory SET user_feedback = ?, full_record = ? WHERE id = ?",
             (feedback, json.dumps(data), memory_id),
@@ -231,3 +238,52 @@ def delete_record(memory_id: str) -> bool:
         cur = conn.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
         conn.commit()
     return cur.rowcount > 0
+
+
+def find_cached_match(
+    problem_text: str,
+    raw_input: Optional[str] = None,
+    threshold: float = 0.90,
+) -> Optional[dict]:
+    """
+    Find a high-reliability match in memory.
+    1. Check for exact match on raw_input (if provided).
+    2. Check for high-similarity match on problem_text.
+    """
+    if not problem_text and not raw_input:
+        return None
+
+    with _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT raw_input, problem_text, embedding, user_feedback, full_record "
+            "FROM memory"
+        ).fetchall()
+
+    if not rows:
+        return None
+
+    # Step 1: Exact match on normalized raw_input
+    if raw_input:
+        clean_raw = raw_input.strip().lower()
+        for row in rows:
+            if row["user_feedback"] == "incorrect":
+                continue
+            if row["raw_input"].strip().lower() == clean_raw:
+                return json.loads(row["full_record"])
+
+    # Step 2: Semantic match on problem_text
+    if problem_text:
+        query_emb = _embed(problem_text)
+        for row in rows:
+            if row["user_feedback"] == "incorrect":
+                continue
+            if not row["embedding"]:
+                continue
+
+            stored = np.frombuffer(row["embedding"], dtype=np.float32)
+            sim = _cosine(query_emb, stored)
+
+            if sim >= threshold:
+                return json.loads(row["full_record"])
+
+    return None
