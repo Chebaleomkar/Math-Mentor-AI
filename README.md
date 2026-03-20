@@ -3,7 +3,7 @@
 **Math Mentor AI** is a state-of-the-art, multi-agent AI system specifically designed for solving **JEE-level math problems**. By combining advanced Vision-Language Models (VLM), Audio Transcription (Whisper), and a structured Agentic Orchestration flow, it provides accurate, verified, and detailed step-by-step solutions to complex mathematical queries.
 
 ## 🚀 Live Demo
-*   **Modern Web UI (Vercel):** [https://math-mentor-ai-alpha.vercel.app/](https://math-mentor-ai-alpha.vercel.app/)
+*   **Modern Web UI (NextJs):** [https://math-mentor-ai-alpha.vercel.app/](https://math-mentor-ai-alpha.vercel.app/)
 *   **Gradio UI (Hugging Face):** [Agent-Omkar/math-mentor-ai](https://huggingface.co/spaces/Agent-Omkar/math-mentor-ai)
 *   **FastAPI Backend:** [Agent-Omkar/math-mentor-backend](https://huggingface.co/spaces/Agent-Omkar/math-mentor-backend)
 

@@ -85,6 +85,7 @@ export interface SolveResponse {
   explanation: ExplanationResult;
   retrieved_sources: RetrievedSource[];
   hitl_required: boolean;
+  is_cache_hit?: boolean;
   memory_id: string;
 }
 
@@ -127,6 +128,7 @@ export interface Message {
     needsReview?: boolean;
     imageUrl?: string;
     audioUrl?: string;
+    isCacheHit?: boolean;
   };
 }
 

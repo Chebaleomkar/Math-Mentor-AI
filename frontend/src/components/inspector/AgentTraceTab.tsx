@@ -33,11 +33,19 @@ export function AgentTraceTab({ solution, isLoading }: AgentTraceTabProps) {
     <div className="space-y-4 p-3">
       {/* Orchestration Flow */}
       <div className="rounded-lg border border-[#2C2C35] bg-[#15151A] p-3">
-        <h4 className="mb-3 text-xs font-medium text-[#9B9693]">Orchestration Flow</h4>
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-xs font-medium text-[#9B9693]">Orchestration Flow</h4>
+          {solution?.is_cache_hit && (
+            <span className="flex items-center gap-1 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+              MEMORY CACHE HIT
+            </span>
+          )}
+        </div>
         <div className="space-y-2">
           {AGENT_STEPS.map((step, index) => {
-            const isCompleted = solution ? index < 5 : index === 0 && isLoading;
-            const isCurrent = isLoading && index === 1;
+            const isCompleted = solution ? (solution.is_cache_hit || index < 5) : index === 0 && isLoading;
+            const isCurrent = !solution?.is_cache_hit && isLoading && index === 1;
             const needsHitl = step.name === 'Verifier' && solution?.hitl_required;
 
             return (

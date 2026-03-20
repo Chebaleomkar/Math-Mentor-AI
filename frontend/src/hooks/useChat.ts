@@ -113,6 +113,7 @@ export function useChat() {
         addMessage({
           role: 'assistant',
           content: formatSolution(response),
+          metadata: { isCacheHit: response.is_cache_hit }
         });
 
         setState((prev) => ({

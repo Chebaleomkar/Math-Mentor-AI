@@ -67,6 +67,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         )}
 
         <MathRenderer content={message.content} />
+        
+        {message.metadata?.isCacheHit && (
+          <div className="mt-2 flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2 py-0.5 w-fit border border-blue-500/20">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+            <span className="text-[10px] font-semibold text-blue-400">INSTANT MEMORY HIT</span>
+          </div>
+        )}
+
         <div
           className={`mt-1 text-[10px] ${
             isUser ? 'text-white/60' : 'text-[#55524F]'
