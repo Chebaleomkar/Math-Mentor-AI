@@ -1,21 +1,28 @@
 'use client';
 
-import { Sigma } from 'lucide-react';
+import { Sigma, Sparkles } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[#2C2C35] bg-[#15151A]/95 backdrop-blur-sm">
-      <div className="flex h-[60px] items-center gap-3 px-5">
-        <div className="flex h-[34px] w-[34px] items-center justify-center rounded-md border border-[#6366F1] bg-[#1E1E3F] shadow-[0_0_14px_rgba(99,102,241,0.12)]">
-          <Sigma className="h-5 w-5 text-[#6366F1]" />
+    <header className="sticky top-0 z-50 glass glass-dark border-b">
+      <div className="flex h-[64px] items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/60 shadow-lg shadow-primary/20 transition-transform hover:scale-105">
+            <Sigma className="h-6 w-6 text-white" />
+            <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-primary animate-pulse" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
+              Math<span className="text-primary">Mentor</span> AI
+            </span>
+            <span className="hidden text-[11px] font-medium text-muted-foreground md:inline-block">
+              A specialized AI, specially trained to solve complex mathematics with precision
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="font-mono text-sm font-medium tracking-wider text-[#6366F1]">
-            MATH MENTOR AI
-          </span>
-          <span className="text-[11px] text-[#55524F]">
-            JEE-level · RAG + Multi-Agent AI
-          </span>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
         </div>
       </div>
     </header>

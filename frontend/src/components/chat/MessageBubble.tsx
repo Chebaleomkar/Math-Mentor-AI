@@ -25,59 +25,61 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300`}
+      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300`}
     >
       {/* Avatar */}
       <div
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${
           isUser
-            ? 'bg-[#6366F1] text-white'
-            : 'bg-[#1D1D23] border border-[#2C2C35] text-[#9B9693]'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-secondary text-secondary-foreground border border-border'
         }`}
       >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </div>
 
       {/* Message Content */}
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+        className={`relative max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm transition-all hover:shadow-md ${
           isUser
-            ? 'bg-[#6366F1] text-white'
-            : 'bg-[#1D1D23] border border-[#2C2C35] text-[#EDEAE4]'
+            ? 'bg-primary text-primary-foreground rounded-tr-none'
+            : 'glass glass-dark text-foreground rounded-tl-none border'
         }`}
       >
         {message.metadata?.imageUrl && (
-          <div className="mb-3 overflow-hidden rounded-lg border border-white/10">
+          <div className="mb-4 overflow-hidden rounded-xl border border-border/50 bg-background/20 group">
             <img 
               src={message.metadata.imageUrl} 
               alt="Uploaded" 
-              className="max-h-60 w-full object-contain"
+              className="max-h-80 w-full object-contain transition-transform group-hover:scale-[1.02]"
             />
           </div>
         )}
 
         {message.metadata?.audioUrl && (
-          <div className="mb-3">
+          <div className="mb-4">
             <audio 
               src={message.metadata.audioUrl} 
               controls 
-              className="h-8 w-full accent-[#6366F1]"
+              className="h-10 w-full accent-primary"
             />
           </div>
         )}
 
-        <MathRenderer content={message.content} />
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          <MathRenderer content={message.content} />
+        </div>
         
         {message.metadata?.isCacheHit && (
-          <div className="mt-2 flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2 py-0.5 w-fit border border-blue-500/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-            <span className="text-[10px] font-semibold text-blue-400">INSTANT MEMORY HIT</span>
+          <div className="mt-3 flex items-center gap-2 rounded-full bg-primary/10 px-2.5 py-1 w-fit border border-primary/20">
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+            <span className="text-[10px] font-bold tracking-wider text-primary uppercase">Instant Memory Hit</span>
           </div>
         )}
 
         <div
-          className={`mt-1 text-[10px] ${
-            isUser ? 'text-white/60' : 'text-[#55524F]'
+          className={`mt-2 text-[10px] font-medium tracking-wide ${
+            isUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
           }`}
         >
           {formatTimestamp(message.timestamp)}

@@ -104,14 +104,14 @@ export function InputBar({
       <LatexPreview text={message} visible={showPreview} />
 
       {/* Input Bar */}
-      <div className="flex items-end gap-2 rounded-[24px] border border-[#2C2C35] bg-[#15151A]/80 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all focus-within:border-[#6366F1] focus-within:shadow-[0_0_20px_rgba(99,102,241,0.15)]">
+      <div className="flex items-end gap-2 rounded-[24px] border border-border/50 bg-background/40 p-4 shadow-xl backdrop-blur-xl transition-all focus-within:border-primary/50 focus-within:shadow-2xl focus-within:shadow-primary/10">
         {/* Attachment Button */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className={`h-10 w-10 shrink-0 rounded-xl border border-[#2C2C35] bg-[#1D1D23] text-[#9B9693] transition-all hover:border-[#6366F1] hover:text-[#6366F1] hover:scale-110 active:scale-90 ${
-            showAttachments ? 'border-[#6366F1] text-[#6366F1]' : ''
+          className={`h-10 w-10 shrink-0 rounded-xl border border-border bg-secondary/50 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:scale-105 active:scale-95 ${
+            showAttachments ? 'border-primary text-primary bg-primary/10' : ''
           }`}
           onClick={() => setShowAttachments(!showAttachments)}
         >
@@ -130,7 +130,7 @@ export function InputBar({
               ? 'Edit the extracted text if needed...'
               : 'Type a math problem...'
           }
-          className="min-h-[44px] max-h-[150px] flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-base text-[#EDEAE4] placeholder:text-[#55524F] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[44px] max-h-[150px] flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={1}
           disabled={isLoading}
         />
@@ -139,7 +139,7 @@ export function InputBar({
         <Button
           type="button"
           size="icon"
-          className="h-10 w-10 shrink-0 rounded-xl bg-[#6366F1] text-[#0E0E11] shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all hover:bg-[#818CF8] hover:scale-110 active:scale-90 disabled:opacity-50"
+          className="h-10 w-10 shrink-0 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 disabled:opacity-50"
           onClick={handleSend}
           disabled={!message.trim() || isLoading}
         >

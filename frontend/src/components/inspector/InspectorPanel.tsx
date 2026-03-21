@@ -22,26 +22,26 @@ export function InspectorPanel({
   const [activeTab, setActiveTab] = useState('history');
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-[#2C2C35] bg-[#15151A]/75 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+    <div className="flex h-full flex-col rounded-xl border border-border/40 glass glass-dark shadow-2xl">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
-        <TabsList className="grid w-full grid-cols-3 border-b border-[#2C2C35] bg-[#1D1D23]/90 p-1">
+        <TabsList className="grid w-full grid-cols-3 border-b border-border/40 bg-secondary/80 p-1">
           <TabsTrigger
             value="history"
-            className="flex items-center justify-center gap-1.5 text-xs text-[#9B9693] transition-colors data-[state=active]:bg-[#6366F1]/10 data-[state=active]:text-[#6366F1] hover:text-[#EDEAE4]"
+            className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm hover:text-foreground"
           >
             <History className="h-3.5 w-3.5" />
             History
           </TabsTrigger>
           <TabsTrigger
             value="trace"
-            className="flex items-center justify-center gap-1.5 text-xs text-[#9B9693] transition-colors data-[state=active]:bg-[#6366F1]/10 data-[state=active]:text-[#6366F1] hover:text-[#EDEAE4]"
+            className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm hover:text-foreground"
           >
             <Activity className="h-3.5 w-3.5" />
             Trace
           </TabsTrigger>
           <TabsTrigger
             value="context"
-            className="flex items-center justify-center gap-1.5 text-xs text-[#9B9693] transition-colors data-[state=active]:bg-[#6366F1]/10 data-[state=active]:text-[#6366F1] hover:text-[#EDEAE4]"
+            className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm hover:text-foreground"
           >
             <BookOpen className="h-3.5 w-3.5" />
             Context

@@ -27,63 +27,63 @@ export function HITLPanel({ onSubmit }: HITLPanelProps) {
   };
 
   return (
-    <div className="mb-4 rounded-xl border border-[#6366F1] bg-[#1E1E3F] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.3),0_0_12px_rgba(99,102,241,0.12)]">
-      <Alert className="mb-3 border-amber-500/20 bg-amber-500/10">
-        <AlertTriangle className="h-4 w-4 text-amber-400" />
-        <AlertTitle className="text-amber-400">Low Confidence Alert</AlertTitle>
-        <AlertDescription className="text-amber-200/70">
-          Our AI is not confident about this solution. Please review and confirm or provide a correction.
+    <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-5 shadow-xl shadow-primary/5 backdrop-blur-sm animate-in slide-in-from-top-4 duration-500">
+      <Alert className="mb-4 border-amber-500/30 bg-amber-500/5">
+        <AlertTriangle className="h-4 w-4 text-amber-500" />
+        <AlertTitle className="text-amber-500 font-bold">Low Confidence Alert</AlertTitle>
+        <AlertDescription className="text-foreground/80">
+          Our AI is not fully confident about this solution. Please review and confirm or provide a correction.
         </AlertDescription>
       </Alert>
-
+ 
       {isEditing ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs text-[#9B9693]">Your corrected answer:</label>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">Your corrected answer</label>
             <Textarea
               value={editedAnswer}
               onChange={(e) => setEditedAnswer(e.target.value)}
               placeholder="Enter the correct solution here..."
-              className="min-h-[80px] border-[#6366F1]/50 bg-[#15151A] text-sm text-[#EDEAE4] placeholder:text-[#55524F] focus-visible:ring-[#6366F1]"
+              className="min-h-[100px] border-primary/20 bg-background/50 text-sm text-foreground placeholder:text-muted-foreground/40 focus-visible:ring-primary/40 shadow-inner"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 border-[#2C2C35] text-[#9B9693]"
+              className="flex-1 border-border text-muted-foreground hover:bg-secondary/50"
               onClick={() => setIsEditing(false)}
             >
               Cancel
             </Button>
             <Button
               size="sm"
-              className="flex-1 gap-1 bg-[#6366F1] text-white hover:bg-[#818CF8]"
+              className="flex-1 gap-2 bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
               onClick={handleEdit}
               disabled={!editedAnswer.trim()}
             >
-              <Check className="h-3 w-3" />
+              <Check className="h-3.5 w-3.5" />
               Submit Correction
             </Button>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Button
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 border-green-500/30 text-green-400 hover:bg-green-500/10 hover:text-green-300"
+            className="flex-1 gap-2 border-green-500/40 text-green-600 hover:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
             onClick={handleApprove}
           >
-            <Check className="h-3 w-3" />
+            <Check className="h-3.5 w-3.5" />
             Approve Solution
           </Button>
           <Button
             size="sm"
-            className="flex-1 gap-1 bg-[#6366F1] text-white hover:bg-[#818CF8]"
+            className="flex-1 gap-2 bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90"
             onClick={() => setIsEditing(true)}
           >
-            <Edit3 className="h-3 w-3" />
+            <Edit3 className="h-3.5 w-3.5" />
             Provide Correction
           </Button>
         </div>

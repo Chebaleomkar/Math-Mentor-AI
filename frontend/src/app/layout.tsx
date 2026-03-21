@@ -18,20 +18,24 @@ export const metadata: Metadata = {
   description: "Your intelligent JEE-level Math Mentor",
 };
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-[100dvh] bg-slate-950`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-[100dvh]`}
         suppressHydrationWarning
       >
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

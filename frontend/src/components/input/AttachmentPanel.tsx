@@ -107,13 +107,13 @@ export function AttachmentPanel({
   };
 
   return (
-    <div className="absolute bottom-full left-0 right-0 z-50 mb-3 rounded-2xl border border-[#2C2C35] bg-[#15151A]/90 p-4 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all animate-in slide-in-from-bottom-2 duration-300">
+    <div className="absolute bottom-full left-0 right-0 z-50 mb-3 rounded-2xl border border-border/50 bg-background/80 p-4 shadow-2xl backdrop-blur-xl transition-all animate-in slide-in-from-bottom-2 duration-300">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-[#9B9693]">Add attachment</span>
+        <span className="text-xs font-medium text-muted-foreground">Add attachment</span>
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-[#55524F] hover:text-[#EDEAE4]"
+          className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-secondary/50"
           onClick={onClose}
         >
           <X className="h-3 w-3" />
@@ -121,16 +121,16 @@ export function AttachmentPanel({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 bg-[#1D1D23]/80 p-1">
+        <TabsList className="grid w-full grid-cols-2 bg-secondary/80 p-1">
           <TabsTrigger 
             value="image" 
-            className="text-xs text-[#9B9693] transition-all data-[state=active]:bg-[#6366F1] data-[state=active]:text-white hover:text-[#EDEAE4]"
+            className="text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover:text-foreground"
           >
             <ImageIcon className="mr-1 h-3 w-3" /> Image
           </TabsTrigger>
           <TabsTrigger 
             value="audio" 
-            className="text-xs text-[#9B9693] transition-all data-[state=active]:bg-[#6366F1] data-[state=active]:text-white hover:text-[#EDEAE4]"
+            className="text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover:text-foreground"
           >
             <Mic className="mr-1 h-3 w-3" /> Audio
           </TabsTrigger>
@@ -143,12 +143,12 @@ export function AttachmentPanel({
                 <img
                   src={previewUrl}
                   alt="Preview"
-                  className="max-h-32 w-full rounded-lg border border-[#2C2C35] object-contain"
+                  className="max-h-32 w-full rounded-lg border border-border object-contain"
                 />
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1 h-6 w-6 bg-[#0E0E11]/80 text-[#EDEAE4]"
+                  className="absolute right-1 top-1 h-6 w-6 bg-background/80 text-foreground hover:bg-background"
                   onClick={() => setPreviewUrl(null)}
                 >
                   <X className="h-3 w-3" />
@@ -156,12 +156,12 @@ export function AttachmentPanel({
               </div>
             ) : (
               <div
-                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#2C2C35] bg-[#1D1D23] p-4 transition-colors hover:border-[#6366F1] hover:bg-[#1E1E3F]"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border/60 bg-secondary/30 p-4 transition-all hover:border-primary/50 hover:bg-primary/5"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="mb-2 h-6 w-6 text-[#6366F1]" />
-                <span className="text-xs text-[#9B9693]">Click to upload image</span>
-                <span className="text-[10px] text-[#55524F]">JPG, PNG, WebP up to 5MB</span>
+                <Upload className="mb-2 h-6 w-6 text-primary" />
+                <span className="text-xs font-medium text-foreground">Click to upload image</span>
+                <span className="text-[10px] text-muted-foreground">JPG, PNG, WebP up to 5MB</span>
               </div>
             )}
             <input
@@ -177,15 +177,15 @@ export function AttachmentPanel({
         <TabsContent value="audio" className="mt-2">
           <div className="space-y-2">
             {isRecording ? (
-              <div className="flex flex-col items-center gap-2 rounded-lg border border-[#6366F1] bg-[#1E1E3F] p-4">
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 p-4">
                 <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 animate-pulse rounded-full bg-red-500" />
-                  <span className="font-mono text-lg text-[#6366F1]">{formatTime(recordingTime)}</span>
+                  <div className="h-3 w-3 animate-pulse rounded-full bg-destructive" />
+                  <span className="font-mono text-lg font-bold text-primary">{formatTime(recordingTime)}</span>
                 </div>
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="w-full"
+                  className="w-full shadow-lg shadow-destructive/20"
                   onClick={stopRecording}
                 >
                   Stop Recording
@@ -195,7 +195,7 @@ export function AttachmentPanel({
               <>
                 <Button
                   variant="outline"
-                  className="w-full border-[#2C2C35] bg-[#1D1D23] text-[#EDEAE4] hover:border-[#6366F1] hover:bg-[#1E1E3F]"
+                  className="w-full border-border bg-secondary/50 text-foreground hover:border-primary/50 hover:bg-primary/5"
                   onClick={startRecording}
                 >
                   <Mic className="mr-2 h-4 w-4" />
@@ -212,10 +212,10 @@ export function AttachmentPanel({
                   />
                   <label
                     htmlFor="audio-upload"
-                    className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#2C2C35] bg-[#1D1D23] p-3 transition-colors hover:border-[#6366F1] hover:bg-[#1E1E3F]"
+                    className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-secondary/30 p-3 transition-all hover:border-primary/50 hover:bg-primary/5"
                   >
-                    <Upload className="mb-1 h-4 w-4 text-[#6366F1]" />
-                    <span className="text-[10px] text-[#9B9693]">Or upload audio file</span>
+                    <Upload className="mb-1 h-4 w-4 text-primary" />
+                    <span className="text-[10px] font-medium text-muted-foreground">Or upload audio file</span>
                   </label>
                 </div>
               </>
