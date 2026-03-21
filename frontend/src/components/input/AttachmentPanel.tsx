@@ -109,7 +109,7 @@ export function AttachmentPanel({
   return (
     <div className="absolute bottom-full left-0 right-0 z-50 mb-3 rounded-2xl border border-border/50 bg-background/80 p-4 shadow-2xl backdrop-blur-xl transition-all animate-in slide-in-from-bottom-2 duration-300">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Add attachment</span>
+        <span className="text-xs font-medium text-muted-foreground"></span>
         <Button
           variant="ghost"
           size="icon"
@@ -122,14 +122,14 @@ export function AttachmentPanel({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 bg-secondary/80 p-1">
-          <TabsTrigger 
-            value="image" 
+          <TabsTrigger
+            value="image"
             className="text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover:text-foreground"
           >
             <ImageIcon className="mr-1 h-3 w-3" /> Image
           </TabsTrigger>
-          <TabsTrigger 
-            value="audio" 
+          <TabsTrigger
+            value="audio"
             className="text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground hover:text-foreground"
           >
             <Mic className="mr-1 h-3 w-3" /> Audio

@@ -18,6 +18,7 @@ export default function Home() {
     showHitl,
     showFeedback,
     extractedText,
+    extractionSource,
     sendTextMessage,
     sendImageMessage,
     sendAudioMessage,
@@ -68,6 +69,7 @@ export default function Home() {
                 onSendAudio={sendAudioMessage}
                 isLoading={isLoading}
                 extractedText={extractedText}
+                extractionSource={extractionSource}
               />
 
               {/* Clear Chat Button */}

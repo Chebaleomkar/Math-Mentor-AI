@@ -26,6 +26,7 @@ interface ChatState {
   isLoading: boolean;
   currentMemoryId: string | null;
   extractedText: string | null;
+  extractionSource: 'image' | 'audio' | null;
   needsReview: boolean;
   extractionConfidence: 'high' | 'medium' | 'low' | null;
   showHitl: boolean;
@@ -40,6 +41,7 @@ export function useChat() {
     isLoading: false,
     currentMemoryId: null,
     extractedText: null,
+    extractionSource: null,
     needsReview: false,
     extractionConfidence: null,
     showHitl: false,
@@ -140,7 +142,7 @@ export function useChat() {
     async (file: File) => {
       // Create local preview URL
       const imageUrl = URL.createObjectURL(file);
-      
+
       // Add user message with image preview
       addMessage({
         role: 'user',
@@ -162,6 +164,7 @@ export function useChat() {
           ...prev,
           isLoading: false,
           extractedText: extraction.extracted_text,
+          extractionSource: 'image',
           needsReview: extraction.needs_review,
           extractionConfidence: extraction.confidence,
         }));
@@ -184,20 +187,27 @@ export function useChat() {
   );
 
   // Process audio for transcription and showcase
+  const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
+ 
   const sendAudioMessage = useCallback(
     async (file: File) => {
+      // Clear any existing auto-send timer
+      if (autoSendTimerRef.current) {
+        clearTimeout(autoSendTimerRef.current);
+      }
+ 
       // Create local preview URL
       const audioUrl = URL.createObjectURL(file);
-
-      // Add user message with audio preview
+ 
+      // Add initial user message with just the audio player
       addMessage({
         role: 'user',
-        content: `🎤 [Audio capture]`,
+        content: '',
         metadata: { audioUrl }
       });
-
+ 
       setState((prev) => ({ ...prev, isLoading: true, showHitl: false, showFeedback: false }));
-
+ 
       try {
         // Convert to base64 and extract
         const base64 = await fileToBase64(file);
@@ -205,21 +215,22 @@ export function useChat() {
           base64,
           file.name
         );
-
+ 
         setState((prev) => ({
           ...prev,
           isLoading: false,
           extractedText: transcription.cleaned_text,
+          extractionSource: 'audio',
           needsReview: transcription.needs_review,
           extractionConfidence: 'medium',
         }));
-
+ 
         // Notification for the user
         addMessage({
           role: 'system',
-          content: '✅ Audio transcribed. Text has been added to your input box for review.'
+          content: '✅ Audio transcribed. It will be sent automatically in 10 seconds unless you edit it or send manually.'
         });
-
+ 
       } catch (error) {
         setState((prev) => ({ ...prev, isLoading: false }));
         addMessage({
@@ -305,6 +316,7 @@ export function useChat() {
       isLoading: false,
       currentMemoryId: null,
       extractedText: null,
+      extractionSource: null,
       needsReview: false,
       extractionConfidence: null,
       showHitl: false,

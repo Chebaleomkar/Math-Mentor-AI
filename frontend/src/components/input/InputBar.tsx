@@ -14,6 +14,7 @@ interface InputBarProps {
   onSendAudio: (file: File) => void;
   isLoading?: boolean;
   extractedText?: string | null;
+  extractionSource?: 'image' | 'audio' | null;
 }
 
 export function InputBar({
@@ -22,11 +23,20 @@ export function InputBar({
   onSendAudio,
   isLoading,
   extractedText,
+  extractionSource,
 }: InputBarProps) {
   const [message, setMessage] = useState('');
   const [showAttachments, setShowAttachments] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearAutoSendTimer = useCallback(() => {
+    if (autoSendTimerRef.current) {
+      clearTimeout(autoSendTimerRef.current);
+      autoSendTimerRef.current = null;
+    }
+  }, []);
 
   // Auto-resize textarea
   const adjustTextareaHeight = useCallback(() => {
@@ -42,8 +52,24 @@ export function InputBar({
     if (extractedText) {
       setMessage(extractedText);
       adjustTextareaHeight();
+
+      // If it's from audio, start an auto-send timer
+      if (extractionSource === 'audio') {
+        clearAutoSendTimer();
+        autoSendTimerRef.current = setTimeout(() => {
+          if (!isLoading && extractedText) {
+            onSendMessage(extractedText);
+            setMessage('');
+            setShowPreview(false);
+            clearAutoSendTimer();
+          }
+        }, 10000);
+      }
     }
-  }, [extractedText, adjustTextareaHeight]);
+    return () => {
+      clearAutoSendTimer();
+    };
+  }, [extractedText, extractionSource, adjustTextareaHeight, onSendMessage, isLoading, clearAutoSendTimer]);
 
   // Focus textarea on mount
   useEffect(() => {
@@ -53,6 +79,7 @@ export function InputBar({
   }, []);
 
   const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    clearAutoSendTimer();
     const value = e.target.value;
     setMessage(value);
     setShowPreview(containsLatex(value));
@@ -62,6 +89,7 @@ export function InputBar({
   const handleSend = () => {
     if (!message.trim() || isLoading) return;
 
+    clearAutoSendTimer();
     onSendMessage(message.trim());
     setMessage('');
     setShowPreview(false);
