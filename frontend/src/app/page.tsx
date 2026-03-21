@@ -27,7 +27,7 @@ export default function Home() {
   } = useChat();
 
   return (
-    <div className="flex h-screen flex-col bg-[#0E0E11]">
+    <div className="flex h-[100dvh] flex-col bg-[#0E0E11]">
       <Header />
 
       <div className="flex flex-1 overflow-hidden">
@@ -39,7 +39,7 @@ export default function Home() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-[#2C2C35] bg-[#0E0E11] p-4">
+          <div className="border-t border-[#2C2C35] bg-[#0E0E11] p-4 pb-8 md:pb-4">
             <div className="mx-auto max-w-3xl space-y-3">
               {/* HITL Panel */}
               {showHitl && (
