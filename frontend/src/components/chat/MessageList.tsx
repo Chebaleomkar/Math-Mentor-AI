@@ -56,26 +56,6 @@ export function MessageList({ messages, isLoading, onSelectTopic }: MessageListP
               {topic.label}
             </button>
           ))}
-          
-          {/* Try HITL Button */}
-          <div className="group relative">
-            <button
-              onClick={() => onSelectTopic?.('Prove the uniqueness of the solution to the Navier-Stokes equations in 3D.')}
-              className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-bold text-primary transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground hover:scale-105 active:scale-95 shadow-md shadow-primary/5"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              Try HITL Demo
-            </button>
-            
-            {/* Tooltip */}
-            <div className="invisible absolute -top-12 left-1/2 -translate-x-1/2 scale-95 whitespace-nowrap rounded-lg bg-foreground px-3 py-1.5 text-[10px] font-bold text-background opacity-0 transition-all group-hover:visible group-hover:scale-100 group-hover:opacity-100 z-50 shadow-xl">
-              Preview Human-in-the-Loop review for complex problems
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-2 w-2 rotate-45 bg-foreground" />
-            </div>
-          </div>
         </div>
       </div>
     );
