@@ -45,6 +45,13 @@ export function InputBar({
     }
   }, [extractedText, adjustTextareaHeight]);
 
+  // Focus textarea on mount
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
   const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setMessage(value);
@@ -97,45 +104,46 @@ export function InputBar({
       <LatexPreview text={message} visible={showPreview} />
 
       {/* Input Bar */}
-      <div className="flex items-end gap-2 rounded-[20px] border border-[#2C2C35] bg-[#15151A] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all focus-within:border-[#6366F1] focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.12),0_8px_32px_rgba(0,0,0,0.4)]">
+      <div className="flex items-end gap-2 rounded-[24px] border border-[#2C2C35] bg-[#15151A]/80 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all focus-within:border-[#6366F1] focus-within:shadow-[0_0_20px_rgba(99,102,241,0.15)]">
         {/* Attachment Button */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className={`h-9 w-9 shrink-0 rounded-lg border border-[#2C2C35] bg-[#1D1D23] text-[#9B9693] transition-all hover:border-[#6366F1] hover:text-[#6366F1] hover:scale-105 ${
+          className={`h-10 w-10 shrink-0 rounded-xl border border-[#2C2C35] bg-[#1D1D23] text-[#9B9693] transition-all hover:border-[#6366F1] hover:text-[#6366F1] hover:scale-110 active:scale-90 ${
             showAttachments ? 'border-[#6366F1] text-[#6366F1]' : ''
           }`}
           onClick={() => setShowAttachments(!showAttachments)}
         >
-          {showAttachments ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showAttachments ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
         </Button>
-
+      
         {/* Text Input */}
         <Textarea
           ref={textareaRef}
           value={message}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          autoFocus
           placeholder={
             extractedText
               ? 'Edit the extracted text if needed...'
-              : 'Type a math problem... (Enter to send, Shift+Enter for new line)'
+              : 'Type a math problem...'
           }
-          className="min-h-[22px] max-h-[150px] flex-1 resize-none border-0 bg-transparent px-2 py-1 text-sm text-[#EDEAE4] placeholder:text-[#55524F] focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[44px] max-h-[150px] flex-1 resize-none border-0 bg-transparent px-2 py-2.5 text-base text-[#EDEAE4] placeholder:text-[#55524F] focus-visible:ring-0 focus-visible:ring-offset-0"
           rows={1}
           disabled={isLoading}
         />
-
+      
         {/* Send Button */}
         <Button
           type="button"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-lg bg-[#6366F1] text-[#0E0E11] transition-all hover:bg-[#818CF8] hover:scale-105 disabled:opacity-50"
+          className="h-10 w-10 shrink-0 rounded-xl bg-[#6366F1] text-[#0E0E11] shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all hover:bg-[#818CF8] hover:scale-110 active:scale-90 disabled:opacity-50"
           onClick={handleSend}
           disabled={!message.trim() || isLoading}
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-5 w-5" />
         </Button>
       </div>
     </div>

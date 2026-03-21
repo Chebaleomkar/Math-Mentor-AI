@@ -107,7 +107,7 @@ export function AttachmentPanel({
   };
 
   return (
-    <div className="absolute bottom-full left-0 right-0 z-50 mb-2 rounded-xl border border-[#2C2C35] bg-[#15151A] p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+    <div className="absolute bottom-full left-0 right-0 z-50 mb-3 rounded-2xl border border-[#2C2C35] bg-[#15151A]/90 p-4 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all animate-in slide-in-from-bottom-2 duration-300">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-medium text-[#9B9693]">Add attachment</span>
         <Button
