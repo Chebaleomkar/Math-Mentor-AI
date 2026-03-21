@@ -42,7 +42,11 @@ export default function Home() {
         <div className="flex flex-1 flex-col relative z-10">
           {/* Messages */}
           <div className="flex-1 overflow-hidden">
-            <MessageList messages={messages} isLoading={isLoading} />
+            <MessageList 
+              messages={messages} 
+              isLoading={isLoading} 
+              onSelectTopic={sendTextMessage}
+            />
           </div>
 
           {/* Input Area */}

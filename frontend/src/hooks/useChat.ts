@@ -95,7 +95,7 @@ export function useChat() {
         // Add loading message
         const loadingId = addMessage({
           role: 'assistant',
-          content: '⏳ Solving your problem...',
+          content: 'Solving...',
         });
 
         const request: SolveRequest = {
@@ -172,7 +172,7 @@ export function useChat() {
         // Notification for the user
         addMessage({
           role: 'system',
-          content: '✅ Image processed. Text has been added to your input box for review.'
+          content: '✅ Image processed. Text will be sent automatically in 10 seconds unless you edit it or send manually.'
         });
 
       } catch (error) {
@@ -188,26 +188,26 @@ export function useChat() {
 
   // Process audio for transcription and showcase
   const autoSendTimerRef = useRef<NodeJS.Timeout | null>(null);
- 
+
   const sendAudioMessage = useCallback(
     async (file: File) => {
       // Clear any existing auto-send timer
       if (autoSendTimerRef.current) {
         clearTimeout(autoSendTimerRef.current);
       }
- 
+
       // Create local preview URL
       const audioUrl = URL.createObjectURL(file);
- 
+
       // Add initial user message with just the audio player
       addMessage({
         role: 'user',
         content: '',
         metadata: { audioUrl }
       });
- 
+
       setState((prev) => ({ ...prev, isLoading: true, showHitl: false, showFeedback: false }));
- 
+
       try {
         // Convert to base64 and extract
         const base64 = await fileToBase64(file);
@@ -215,7 +215,7 @@ export function useChat() {
           base64,
           file.name
         );
- 
+
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -224,13 +224,13 @@ export function useChat() {
           needsReview: transcription.needs_review,
           extractionConfidence: 'medium',
         }));
- 
+
         // Notification for the user
         addMessage({
           role: 'system',
           content: '✅ Audio transcribed. It will be sent automatically in 10 seconds unless you edit it or send manually.'
         });
- 
+
       } catch (error) {
         setState((prev) => ({ ...prev, isLoading: false }));
         addMessage({

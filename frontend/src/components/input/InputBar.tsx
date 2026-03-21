@@ -53,8 +53,8 @@ export function InputBar({
       setMessage(extractedText);
       adjustTextareaHeight();
 
-      // If it's from audio, start an auto-send timer
-      if (extractionSource === 'audio') {
+      // If it's from extraction (audio or image), start an auto-send timer
+      if (extractionSource === 'audio' || extractionSource === 'image') {
         clearAutoSendTimer();
         autoSendTimerRef.current = setTimeout(() => {
           if (!isLoading && extractedText) {
@@ -63,7 +63,7 @@ export function InputBar({
             setShowPreview(false);
             clearAutoSendTimer();
           }
-        }, 10000);
+        }, 5000);
       }
     }
     return () => {
@@ -138,14 +138,13 @@ export function InputBar({
           type="button"
           variant="ghost"
           size="icon"
-          className={`h-10 w-10 shrink-0 rounded-xl border border-border bg-secondary/50 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:scale-105 active:scale-95 ${
-            showAttachments ? 'border-primary text-primary bg-primary/10' : ''
-          }`}
+          className={`h-10 w-10 shrink-0 rounded-xl border border-border bg-secondary/50 text-muted-foreground transition-all hover:border-primary/50 hover:text-primary hover:scale-105 active:scale-95 ${showAttachments ? 'border-primary text-primary bg-primary/10' : ''
+            }`}
           onClick={() => setShowAttachments(!showAttachments)}
         >
           {showAttachments ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
         </Button>
-      
+
         {/* Text Input */}
         <Textarea
           ref={textareaRef}
@@ -162,7 +161,7 @@ export function InputBar({
           rows={1}
           disabled={isLoading}
         />
-      
+
         {/* Send Button */}
         <Button
           type="button"
