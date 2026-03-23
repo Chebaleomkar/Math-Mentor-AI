@@ -50,6 +50,15 @@ export interface RetrievedSource {
 }
 
 // Memory Types
+export interface ExecutionTrace {
+  agent_sequence: string[];
+  tool_calls: ToolCall[];
+  context_retrieved: RetrievedSource[];
+  start_time: string;
+  end_time: string;
+  total_duration_seconds: number;
+}
+
 export interface MemoryRecord {
   id: string;
   raw_input: string;
@@ -60,6 +69,7 @@ export interface MemoryRecord {
   user_feedback?: string;
   user_comment?: string;
   timestamp: string;
+  execution_trace: ExecutionTrace;
 }
 
 export interface MemorySummary {
@@ -69,6 +79,9 @@ export interface MemorySummary {
   final_answer: string;
   user_feedback?: string;
   timestamp: string;
+  agent_sequence: string[];
+  tool_count: number;
+  context_count: number;
 }
 
 // API Request/Response Types
@@ -137,8 +150,9 @@ export type InputMode = 'text' | 'image' | 'audio';
 
 export type InspectorTab = 'history' | 'trace' | 'context';
 
-export interface AgentStep {
-  name: string;
+export interface AgentActivity {
+  agent: string;
   status: 'pending' | 'running' | 'completed' | 'error';
-  icon: string;
+  timestamp: Date;
+  details?: string;
 }

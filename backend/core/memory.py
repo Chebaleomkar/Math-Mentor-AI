@@ -12,6 +12,7 @@ At runtime:
   - find_similar()  → called before solving to inject past solutions as context
   - update_feedback()→ called when user gives thumbs up/down or HITL corrects
 """
+
 from __future__ import annotations
 
 import json
@@ -28,6 +29,7 @@ from core.config import settings
 
 
 # ── DB setup ──────────────────────────────────────────────────────────────────
+
 
 def _db_path() -> Path:
     p = Path(settings.MEMORY_DB_PATH)
@@ -65,6 +67,7 @@ _init_db()
 # ── Embedding helper ──────────────────────────────────────────────────────────
 _embedder: Optional[GoogleGenerativeAIEmbeddings] = None
 
+
 def _get_embedder() -> GoogleGenerativeAIEmbeddings:
     global _embedder
     if _embedder is None:
@@ -83,7 +86,7 @@ def _embed(text: str) -> np.ndarray:
     """
     if not text or not text.strip():
         return np.zeros(settings.EMBEDDING_DIMENSIONS, dtype=np.float32)
-        
+
     vec = _get_embedder().embed_query(text)
     return np.array(vec, dtype=np.float32)
 
@@ -94,6 +97,7 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def save_record(record) -> str:
     """
@@ -108,8 +112,8 @@ def save_record(record) -> str:
         if hasattr(record, "model_dump"):
             record = record.model_dump()
         else:
-             # Just assume it's a dict
-             pass
+            # Just assume it's a dict
+            pass
         record = MemoryRecord(**record)
 
     rec_id = record.id or str(uuid.uuid4())
@@ -118,22 +122,25 @@ def save_record(record) -> str:
     emb = _embed(problem_text)
 
     with _get_conn() as conn:
-        conn.execute("""
+        conn.execute(
+            """
             INSERT OR REPLACE INTO memory
               (id, raw_input, problem_text, topic, final_answer,
                full_record, embedding, user_feedback, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            rec_id,
-            record.raw_input,
-            problem_text,
-            record.parsed_problem.topic,
-            final_answer,
-            record.model_dump_json(),
-            emb.tobytes(),
-            record.user_feedback,
-            record.timestamp or datetime.now(timezone.utc).isoformat(),
-        ))
+        """,
+            (
+                rec_id,
+                record.raw_input,
+                problem_text,
+                record.parsed_problem.topic,
+                final_answer,
+                record.model_dump_json(),
+                emb.tobytes(),
+                record.user_feedback,
+                record.timestamp or datetime.now(timezone.utc).isoformat(),
+            ),
+        )
         conn.commit()
 
     return rec_id
@@ -201,12 +208,14 @@ def find_similar(
         sim = _cosine(query_emb, stored)
 
         if sim >= min_similarity:
-            results.append({
-                "id": row["id"],
-                "problem_text": row["problem_text"],
-                "final_answer": row["final_answer"],
-                "similarity": round(sim, 3),
-            })
+            results.append(
+                {
+                    "id": row["id"],
+                    "problem_text": row["problem_text"],
+                    "final_answer": row["final_answer"],
+                    "similarity": round(sim, 3),
+                }
+            )
 
     results.sort(key=lambda x: x["similarity"], reverse=True)
     return results[:top_k]
@@ -225,11 +234,25 @@ def list_recent(limit: int = 20) -> List[dict]:
     """Return lightweight summaries of the most recent records."""
     with _get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, problem_text, topic, final_answer, user_feedback, timestamp "
+            "SELECT id, problem_text, topic, final_answer, user_feedback, timestamp, full_record "
             "FROM memory ORDER BY timestamp DESC LIMIT ?",
             (limit,),
         ).fetchall()
-    return [dict(r) for r in rows]
+
+    results = []
+    for row in rows:
+        record = dict(row)
+        # Extract trace info from full_record JSON
+        full_record = json.loads(row["full_record"])
+        exec_trace = full_record.get("execution_trace", {})
+
+        record["agent_sequence"] = exec_trace.get("agent_sequence", [])
+        record["tool_count"] = len(exec_trace.get("tool_calls", []))
+        record["context_count"] = len(exec_trace.get("context_retrieved", []))
+
+        results.append(record)
+
+    return results
 
 
 def delete_record(memory_id: str) -> bool:

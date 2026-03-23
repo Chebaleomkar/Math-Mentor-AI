@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, RefreshCw } from 'lucide-react';
+import { Clock, RefreshCw, Cpu, Wrench, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MemorySummary } from '@/types';
 import { listMemory } from '@/lib/api';
@@ -87,11 +87,33 @@ export function HistoryTab({ onSelectProblem }: HistoryTabProps) {
               {truncate(item.problem_text, 80)}
             </p>
 
-            <div className="rounded bg-[#0E0E11] px-2 py-1">
+            <div className="mb-2 rounded bg-[#0E0E11] px-2 py-1">
               <span className="text-[10px] uppercase text-[#55524F]">Ans:</span>
               <span className="ml-1 text-xs font-medium text-green-400">
                 {truncate(item.final_answer, 40)}
               </span>
+            </div>
+
+            {/* Agent & Trace Info */}
+            <div className="flex items-center gap-3 text-[10px] text-[#55524F]">
+              {item.agent_sequence && item.agent_sequence.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Cpu className="h-3 w-3" />
+                  <span>{item.agent_sequence.length} agents</span>
+                </div>
+              )}
+              {item.tool_count > 0 && (
+                <div className="flex items-center gap-1">
+                  <Wrench className="h-3 w-3" />
+                  <span>{item.tool_count} tools</span>
+                </div>
+              )}
+              {item.context_count > 0 && (
+                <div className="flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  <span>{item.context_count} sources</span>
+                </div>
+              )}
             </div>
 
             {item.user_feedback && (

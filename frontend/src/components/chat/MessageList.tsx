@@ -1,17 +1,19 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { Message } from '@/types';
+import { Message, AgentActivity } from '@/types';
 import { MessageBubble } from './MessageBubble';
+import { AgentActivityPanel } from './AgentActivityPanel';
 import { Sigma, Bot } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
   onSelectTopic?: (problem: string) => void;
+  agentActivity?: AgentActivity[];
 }
 
-export function MessageList({ messages, isLoading, onSelectTopic }: MessageListProps) {
+export function MessageList({ messages, isLoading, onSelectTopic, agentActivity = [] }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +72,12 @@ export function MessageList({ messages, isLoading, onSelectTopic }: MessageListP
         <MessageBubble key={message.id} message={message} />
       ))}
 
-      {isLoading && (
+      {/* Agent Activity Panel - Shows during/after processing */}
+      {agentActivity.length > 0 && (
+        <AgentActivityPanel activity={agentActivity} isLoading={isLoading} />
+      )}
+
+      {isLoading && agentActivity.length === 0 && (
         <div className="flex items-center gap-3 px-4 py-3 animate-pulse">
           <div className="flex space-x-1.5">
             <div className="h-2.5 w-2.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: '0ms' }} />

@@ -9,6 +9,7 @@ import {
   TranscriptionResponse,
   InputMode,
   MemorySummary,
+  MemoryRecord,
 } from '@/types';
 import {
   solveProblem,
@@ -17,6 +18,7 @@ import {
   submitHITL,
   submitFeedback,
   listMemory,
+  getMemoryRecord,
   fileToBase64,
 } from '@/lib/api';
 import { generateId } from '@/lib/utils';
@@ -33,6 +35,15 @@ interface ChatState {
   showFeedback: boolean;
   currentSolution: SolveResponse | null;
   history: MemorySummary[];
+  currentAgent: string | null;
+  agentActivity: AgentActivity[];
+}
+
+export interface AgentActivity {
+  agent: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  timestamp: Date;
+  details?: string;
 }
 
 export function useChat() {
@@ -48,6 +59,8 @@ export function useChat() {
     showFeedback: false,
     currentSolution: null,
     history: [],
+    currentAgent: null,
+    agentActivity: [],
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -89,6 +102,9 @@ export function useChat() {
         showFeedback: false,
         extractedText: null,
         needsReview: false,
+        agentActivity: [
+          { agent: 'parser', status: 'running', timestamp: new Date() }
+        ],
       }));
 
       try {
@@ -104,6 +120,14 @@ export function useChat() {
         };
 
         const response = await solveProblem(request);
+
+        // Build agent activity from response
+        const allAgents = ['parser', 'memory_lookup', 'rag', 'solver', 'verifier', 'explainer'];
+        const activity: AgentActivity[] = allAgents.map((agent) => ({
+          agent,
+          status: 'completed' as const,
+          timestamp: new Date(),
+        }));
 
         // Remove loading message
         setState((prev) => ({
@@ -125,9 +149,14 @@ export function useChat() {
           currentSolution: response,
           showHitl: response.hitl_required && response.verifier_result.confidence < 0.85,
           showFeedback: !(response.hitl_required && response.verifier_result.confidence < 0.85),
+          agentActivity: activity,
         }));
       } catch (error) {
-        setState((prev) => ({ ...prev, isLoading: false }));
+        setState((prev) => ({ 
+          ...prev, 
+          isLoading: false,
+          agentActivity: prev.agentActivity.map(a => ({ ...a, status: 'error' as const }))
+        }));
         addMessage({
           role: 'assistant',
           content: `❌ Error: ${error instanceof Error ? error.message : 'Failed to solve problem'}`,
@@ -323,8 +352,61 @@ export function useChat() {
       showFeedback: false,
       currentSolution: null,
       history: state.history,
+      currentAgent: null,
+      agentActivity: [],
     });
   }, [state.history]);
+
+  // Load chat from history
+  const loadFromHistory = useCallback(
+    async (memoryId: string) => {
+      try {
+        setState((prev) => ({ ...prev, isLoading: true }));
+        const record = await getMemoryRecord(memoryId);
+        
+        // Add user message from history
+        addMessage({
+          role: 'user',
+          content: record.raw_input,
+        });
+
+        // Format and add assistant response
+        const formattedResponse = formatSolutionFromRecord(record);
+        addMessage({
+          role: 'assistant',
+          content: formattedResponse,
+        });
+
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          currentMemoryId: record.id,
+          currentSolution: {
+            parsed_problem: record.parsed_problem,
+            solver_result: record.solver_result,
+            verifier_result: record.verifier_result,
+            explanation: record.explanation,
+            retrieved_sources: record.execution_trace?.context_retrieved || [],
+            hitl_required: record.verifier_result.needs_hitl,
+            is_cache_hit: false,
+            memory_id: record.id,
+          },
+          agentActivity: record.execution_trace?.agent_sequence.map((agent) => ({
+            agent,
+            status: 'completed' as const,
+            timestamp: new Date(record.execution_trace.start_time),
+          })) || [],
+        }));
+      } catch (error) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        addMessage({
+          role: 'assistant',
+          content: `❌ Error loading history: ${error instanceof Error ? error.message : 'Failed to load'}`,
+        });
+      }
+    },
+    [addMessage]
+  );
 
   return {
     ...state,
@@ -337,12 +419,43 @@ export function useChat() {
     submitUserFeedback,
     loadHistory,
     clearChat,
+    loadFromHistory,
   };
 }
 
 // Helper to format solution for display
 function formatSolution(response: SolveResponse): string {
   const { explanation, verifier_result, solver_result } = response;
+
+  let content = '';
+
+  // Explanation
+  if (explanation.explanation) {
+    content += explanation.explanation;
+  } else {
+    content += solver_result.solution;
+  }
+
+  // Final answer
+  content += `\n\n---\n\n**Final Answer:** ${explanation.final_answer || solver_result.final_answer}`;
+
+  // Confidence badge
+  const confidence = explanation.confidence || verifier_result.confidence;
+  const confidenceLevel = confidence >= 0.85 ? 'High' : confidence >= 0.65 ? 'Medium' : 'Low';
+  const confidenceIcon = confidence >= 0.85 ? '🟢' : confidence >= 0.65 ? '🟡' : '🔴';
+  content += `\n\n${confidenceIcon} **${confidenceLevel} confidence** (${Math.round(confidence * 100)}%)`;
+
+  // Issues if any
+  if (verifier_result.issues && verifier_result.issues.length > 0) {
+    content += `\n\n⚠️ **Issues:** ${verifier_result.issues.join(', ')}`;
+  }
+
+  return content;
+}
+
+// Helper to format solution from MemoryRecord (for history)
+function formatSolutionFromRecord(record: MemoryRecord): string {
+  const { explanation, verifier_result, solver_result } = record;
 
   let content = '';
 

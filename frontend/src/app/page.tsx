@@ -25,6 +25,8 @@ export default function Home() {
     submitHITLFeedback,
     submitUserFeedback,
     clearChat,
+    loadFromHistory,
+    agentActivity,
   } = useChat();
 
   return (
@@ -46,6 +48,7 @@ export default function Home() {
               messages={messages} 
               isLoading={isLoading} 
               onSelectTopic={sendTextMessage}
+              agentActivity={agentActivity}
             />
           </div>
 
@@ -99,6 +102,7 @@ export default function Home() {
           <InspectorPanel
             solution={currentSolution}
             isLoading={isLoading}
+            onSelectHistoryItem={(item) => loadFromHistory(item.id)}
           />
         </div>
       </div>

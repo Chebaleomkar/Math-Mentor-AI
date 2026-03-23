@@ -6,11 +6,13 @@ Central pipeline:
 
 Returns SolveResponse which includes retrieved_sources for UI display.
 """
+
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 from agents.parser_agent import ParserAgent
 from agents.solver_agent import SolverAgent
@@ -22,6 +24,7 @@ from models.schemas import (
     RetrievedSource,
     SolveResponse,
     HITLResponse,
+    ExecutionTrace,
 )
 from tools.rag_tool import get_retrieved_chunks
 
@@ -36,46 +39,53 @@ class Orchestrator:
     # ── Main pipeline ─────────────────────────────────────────────────────────
 
     def run(self, raw_input: str, input_type: str = "text") -> SolveResponse:
+        start_time = time.time()
+        agent_sequence: List[str] = []
+
         # 1. Parse raw input → structured problem
+        agent_sequence.append("parser")
         parsed = self.parser.run(raw_input)
 
         # 2. Check for an approved/stable match in memory (CACHING SHORTCUT)
         cached_record = mem_store.find_cached_match(
-            problem_text=parsed.problem_text, 
-            raw_input=raw_input
+            problem_text=parsed.problem_text, raw_input=raw_input
         )
         if cached_record:
             # We found a perfect match! Bypass the entire pipeline.
             # Reuse the original memory_id so feedback is linked.
             cached_id = cached_record["id"]
-            
+
             from models.schemas import SolverResult, VerifierResult, ExplanationResult
-            
+
             solver_res = SolverResult(**cached_record["solver_result"])
             verifier_res = VerifierResult(**cached_record["verifier_result"])
             expl_res = ExplanationResult(**cached_record["explanation"])
-            
+
             return SolveResponse(
                 parsed_problem=parsed,
                 solver_result=solver_res,
                 verifier_result=verifier_res,
                 explanation=expl_res,
-                retrieved_sources=[], # No RAG performed for cache hit
+                retrieved_sources=[],  # No RAG performed for cache hit
                 hitl_required=False,
                 is_cache_hit=True,
                 memory_id=cached_id,
             )
 
         # 3. Memory lookup — find similar past problems for HINTS (for non-cache cases)
+        agent_sequence.append("memory_lookup")
         similar = mem_store.find_similar(parsed.problem_text, top_k=3)
         if similar:
             hint_block = "\n\n[MEMORY CONTEXT — similar solved problems]\n"
             for s in similar:
-                hint_block += f"• Problem: {s['problem_text']}\n  Answer: {s['final_answer']}\n"
+                hint_block += (
+                    f"• Problem: {s['problem_text']}\n  Answer: {s['final_answer']}\n"
+                )
             # Append memory hints so solver can reuse patterns
             parsed.problem_text += hint_block
 
         # 4. Retrieve RAG context for UI display (solver agent also calls internally)
+        agent_sequence.append("rag")
         raw_chunks = get_retrieved_chunks(parsed.problem_text)
         retrieved_sources = [
             RetrievedSource(
@@ -89,16 +99,21 @@ class Orchestrator:
         ]
 
         # 5. Solve
+        agent_sequence.append("solver")
         solver_result = self.solver.run(parsed)
 
         # 6. Verify
+        agent_sequence.append("verifier")
         verifier_result = self.verifier.run(parsed, solver_result)
 
         # 7. Explain
+        agent_sequence.append("explainer")
         explanation = self.explainer.run(parsed, solver_result, verifier_result)
 
         # 8. Persist to memory
         mem_id = str(uuid.uuid4())
+        end_time = time.time()
+
         record = MemoryRecord(
             id=mem_id,
             raw_input=raw_input,
@@ -107,6 +122,14 @@ class Orchestrator:
             verifier_result=verifier_result,
             explanation=explanation,
             timestamp=datetime.now(timezone.utc).isoformat(),
+            execution_trace=ExecutionTrace(
+                agent_sequence=agent_sequence,
+                tool_calls=solver_result.tool_calls,
+                context_retrieved=retrieved_sources,
+                start_time=datetime.fromtimestamp(start_time, timezone.utc).isoformat(),
+                end_time=datetime.fromtimestamp(end_time, timezone.utc).isoformat(),
+                total_duration_seconds=round(end_time - start_time, 2),
+            ),
         )
         mem_store.save_record(record)
 
@@ -137,7 +160,9 @@ class Orchestrator:
             return record_data["explanation"]["final_answer"]
 
         corrected = hitl_response.edited_answer or ""
-        comment = f"Human correction: {corrected}. {hitl_response.comment or ''}".strip()
+        comment = (
+            f"Human correction: {corrected}. {hitl_response.comment or ''}".strip()
+        )
         mem_store.update_feedback(memory_id, "corrected", comment)
 
         # Update the stored record with corrected answer so memory learns it
