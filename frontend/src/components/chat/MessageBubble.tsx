@@ -111,11 +111,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </div>
 
-      {/* Message Content */}
       <div
         className={`relative max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm transition-all hover:shadow-md ${isUser
           ? (message.metadata?.audioUrl && !message.content ? 'bg-secondary/30 border border-border/50 text-foreground rounded-tr-none' : 'bg-primary text-primary-foreground rounded-tr-none')
-          : 'glass glass-dark text-foreground rounded-tl-none border'
+          : 'bg-secondary dark:bg-card/60 backdrop-blur-md text-foreground rounded-tl-none border border-border/50'
           }`}
       >
         {message.metadata?.imageUrl && (

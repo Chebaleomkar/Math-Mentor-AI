@@ -118,9 +118,8 @@ export function MathRenderer({ content, className = '' }: MathRendererProps) {
   return (
     <div
       ref={containerRef}
-      className={`prose prose-invert max-w-none ${className}`}
+      className={`prose dark:prose-invert max-w-none text-foreground ${className}`}
       style={{
-        color: '#EDEAE4',
         lineHeight: 1.7,
       }}
     />
@@ -161,8 +160,8 @@ export function LatexPreview({ text, visible }: LatexPreviewProps) {
 
     previewRef.current.innerHTML = `
       <div class="flex flex-col gap-1">
-        <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-blue-500  ">Live Preview</div>
-        <div class="text-[#EDEAE4] overflow-x-auto">
+        <div class="text-[10px] font-bold uppercase tracking-[0.1em] text-primary">Live Preview</div>
+        <div class="text-foreground overflow-x-auto">
           ${rendered.join(' ')}
         </div>
       </div>
@@ -174,7 +173,7 @@ export function LatexPreview({ text, visible }: LatexPreviewProps) {
   return (
     <div
       ref={previewRef}
-      className="mb-4 rounded-xl border border-dashed border-[#2C2C35] bg-[#1D1D23]/40 px-4 py-3 text-sm backdrop-blur-sm shadow-inner"
+      className="mb-4 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3 text-sm backdrop-blur-sm shadow-inner"
     />
   );
 }
